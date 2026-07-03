@@ -1,0 +1,22 @@
+<section class="panel">
+    <div class="panel-header">
+        <div>
+            <h2>{{ title }}</h2>
+            <p>Discovered from <code><b>ai-platform-backend/app/api</b></code></p>
+        </div>
+    </div>
+    <div class="endpoint-list">
+        {% for endpoint in endpoints %}
+            <div class="endpoint-row">
+                <span class="method">{{ endpoint.method }}</span>
+                <code>{{ endpoint.path }}</code>
+                <span>{{ endpoint.area }}</span>
+            </div>
+        {% empty %}
+            <div class="empty-state">
+                <h3>No endpoints found</h3>
+                <p>This section does not have a dedicated list endpoint yet.</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
