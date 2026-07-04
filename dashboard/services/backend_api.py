@@ -7,8 +7,7 @@ BASE_API_URL = os.getenv(
     'BASE_API_URL',
     getattr(settings, 'BASE_API_URL', 'http://localhost:8000'),
 ).rstrip('/')
-BASE_API_TOKEN = os.getenv('BASE_API_TOKEN', '')
-REQUEST_TIMEOUT = 10
+REQUEST_TIMEOUT = 30
 
 
 class BackendAPIError(Exception):
@@ -18,22 +17,20 @@ class BackendAPIError(Exception):
         self.status_code = status_code
 
 
-def _headers():
-    if not BASE_API_TOKEN:
-        return {}
-
-    return {
-        'Authorization': f'Bearer {BASE_API_TOKEN}',
-    }
+def _headers(token=None):
+    headers = {}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    return headers
 
 
-def _request(method, path, **kwargs):
+def _request(method, path, token=None, **kwargs):
     url = f'{BASE_API_URL}{path}'
     try:
         response = requests.request(
             method,
             url,
-            headers=_headers(),
+            headers=_headers(token),
             timeout=REQUEST_TIMEOUT,
             **kwargs,
         )
@@ -66,25 +63,110 @@ def _extract_error_detail(response):
     detail = payload.get('detail')
     if isinstance(detail, str):
         return detail
+    if isinstance(detail, list):
+        return '; '.join(str(item.get('msg', item)) for item in detail)
 
     return ''
+
+
+def login(email, password):
+    return _request(
+        'POST',
+        '/auth/login',
+        data={'username': email, 'password': password},
+    )
+
+
+def register(email, password):
+    return _request(
+        'POST',
+        '/auth/register',
+        json={'email': email, 'password': password},
+    )
+
+
+def get_current_user(token):
+    return _request('GET', '/auth/me', token=token)
 
 
 def get_health():
     return _request('GET', '/health')
 
 
-def list_projects():
-    return _request('GET', '/projects/')
+def list_projects(token):
+    return _request('GET', '/projects/', token=token)
 
 
-def get_project(project_id):
-    return _request('GET', f'/projects/{project_id}')
+def create_project(token, name, description=''):
+    return _request(
+        'POST',
+        '/projects/',
+        token=token,
+        json={'name': name, 'description': description or None},
+    )
 
 
-def list_project_workflows(project_id):
-    return _request('GET', f'/projects/{project_id}/workflows')
+def get_project(token, project_id):
+    return _request('GET', f'/projects/{project_id}', token=token)
 
 
-def list_project_documents(project_id):
-    return _request('GET', f'/projects/{project_id}/documents')
+def delete_project(token, project_id):
+    return _request('DELETE', f'/projects/{project_id}', token=token)
+
+
+def list_project_chats(token, project_id):
+    return _request('GET', f'/projects/{project_id}/chats', token=token)
+
+
+def create_chat(token, project_id, title, agent_name='assistant'):
+    return _request(
+        'POST',
+        f'/projects/{project_id}/chats',
+        token=token,
+        json={'title': title, 'agent_name': agent_name},
+    )
+
+
+def get_chat(token, chat_id):
+    return _request('GET', f'/chats/{chat_id}', token=token)
+
+
+def delete_chat(token, chat_id):
+    return _request('DELETE', f'/chats/{chat_id}', token=token)
+
+
+def list_messages(token, chat_id):
+    return _request('GET', f'/chats/{chat_id}/messages', token=token)
+
+
+def send_message(token, chat_id, content):
+    return _request(
+        'POST',
+        f'/chats/{chat_id}/messages',
+        token=token,
+        json={'content': content},
+    )
+
+
+def list_project_documents(token, project_id):
+    return _request('GET', f'/projects/{project_id}/documents', token=token)
+
+
+def upload_document(token, project_id, uploaded_file):
+    files = {
+        'file': (
+            uploaded_file.name,
+            uploaded_file,
+            getattr(uploaded_file, 'content_type', 'application/octet-stream'),
+        )
+    }
+    return _request(
+        'POST',
+        f'/projects/{project_id}/documents',
+        token=token,
+        files=files,
+    )
+
+
+def delete_document(token, document_id):
+    return _request('DELETE', f'/documents/{document_id}', token=token)
