@@ -1,0 +1,33 @@
+{% load markdown_extras %}
+
+{% if message_error %}
+    <div class="notice danger-panel">{{ message_error }}</div>
+{% endif %}
+
+{% if chat_messages %}
+    {% for message in chat_messages %}
+        <article class="message {{ message.role }}">
+            <div class="message-role">{{ message.role }}</div>
+            <div class="message-bubble">
+                {% if message.role == "assistant" %}
+                    <div class="rich-text">{{ message.content|render_markdown }}</div>
+                {% else %}
+                    <p>{{ message.content|linebreaksbr }}</p>
+                {% endif %}
+                {% if message.sources %}
+                    <div class="sources">
+                        <strong>Sources</strong>
+                        {% for source in message.sources %}
+                            <span>{{ source.document_name }} · {{ source.matches }} matches</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </article>
+    {% endfor %}
+{% else %}
+    <div class="empty-state center-state">
+        <h2>Empty chat</h2>
+        <p>Send a message to start the conversation.</p>
+    </div>
+{% endif %}

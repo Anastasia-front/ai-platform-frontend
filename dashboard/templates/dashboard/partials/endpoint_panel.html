@@ -1,8 +1,8 @@
-<section class="panel">
-    <div class="panel-header">
+<section class="page-panel">
+    <div class="page-heading">
         <div>
-            <h2>{{ title }}</h2>
-            <p>Discovered from <code><b>ai-platform-backend/app/api</b></code></p>
+            <p class="eyebrow">Backend map</p>
+            <h1>{{ title }}</h1>
         </div>
     </div>
     <div class="endpoint-list">
@@ -14,8 +14,8 @@
             </div>
         {% empty %}
             <div class="empty-state">
-                <h3>No endpoints found</h3>
-                <p>This section does not have a dedicated list endpoint yet.</p>
+                <h2>No dedicated endpoints</h2>
+                <p>This area does not expose a list endpoint in the backend yet.</p>
             </div>
         {% endfor %}
     </div>

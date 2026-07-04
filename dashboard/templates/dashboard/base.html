@@ -5,41 +5,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}AI Platform{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <link rel="stylesheet" href="{% static 'dashboard/styles.css' %}">
+    <script src="{% static 'dashboard/chat.js' %}" defer></script>
 </head>
 <body>
-    <div class="app-shell">
-        <aside class="sidebar" aria-label="Primary navigation">
-            <a class="brand" href="{% url 'dashboard:index' %}">
-                <span class="brand-mark">AI</span>
-                <span>
-                    <strong>AI Platform</strong>
-                    <small>Frontend</small>
-                </span>
-            </a>
-            <nav class="nav-links">
-                <a href="{% url 'dashboard:index' %}" {% if request.resolver_match.url_name == 'index' or request.resolver_match.url_name == 'project_detail' %}class="active"{% endif %}>Dashboard</a>
-                <a href="{% url 'dashboard:providers' %}" {% if request.resolver_match.url_name == 'providers' %}class="active"{% endif %}>Providers</a>
-                <a href="{% url 'dashboard:workflows' %}" {% if request.resolver_match.url_name == 'workflows' %}class="active"{% endif %}>Workflows</a>
-                <a href="{% url 'dashboard:executions' %}" {% if request.resolver_match.url_name == 'executions' %}class="active"{% endif %}>Executions / Logs</a>
-                <a href="{% url 'dashboard:settings' %}" {% if request.resolver_match.url_name == 'settings' %}class="active"{% endif %}>Settings</a>
-            </nav>
-        </aside>
-
-        <main class="main">
-            <header class="page-header">
-                <div>
-                    <p class="eyebrow">{% block eyebrow %}Django frontend{% endblock %}</p>
-                    <h1>{% block heading %}Dashboard{% endblock %}</h1>
-                </div>
-                <div class="api-pill" title="BASE_API_URL">
-                    <span>API</span>
-                    <code>{{ backend_api_url }}</code>
-                </div>
-            </header>
-
-            {% block content %}{% endblock %}
-        </main>
-    </div>
+    {% block body %}{% endblock %}
 </body>
 </html>

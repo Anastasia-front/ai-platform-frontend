@@ -1,0 +1,100 @@
+{% extends "dashboard/app_base.html" %}
+
+{% block title %}{% if active_chat %}{{ active_chat.title }}{% elif active_project %}{{ active_project.name }}{% else %}Project{% endif %} | AI Platform{% endblock %}
+
+{% block content %}
+<section class="chat-shell">
+    {% if page_error %}
+        <div class="empty-state">
+            <h1>Workspace unavailable</h1>
+            <p>{{ page_error }}</p>
+        </div>
+    {% elif active_project %}
+        <header class="chat-header">
+            <div>
+                <p class="eyebrow">{{ active_project.name }}</p>
+                <h1>{% if active_chat %}{{ active_chat.title }}{% else %}Start a chat{% endif %}</h1>
+            </div>
+            <div class="header-actions">
+                {% if active_chat %}
+                    <form method="post" action="{% url 'dashboard:delete_chat' active_project.slug active_chat.slug %}">
+                        {% csrf_token %}
+                        <button type="submit" class="secondary danger-button">Delete Chat</button>
+                    </form>
+                {% endif %}
+                <form method="post" action="{% url 'dashboard:delete_project' active_project.slug %}">
+                    {% csrf_token %}
+                    <button type="submit" class="secondary danger-button">Delete Project</button>
+                </form>
+            </div>
+        </header>
+
+        <div class="workspace-grid">
+            <section class="conversation-panel">
+                {% if active_chat %}
+                    <div id="messages" class="message-list">
+                        {% include "dashboard/chat/_messages.html" %}
+                    </div>
+                    <form
+                        method="post"
+                        action="{% url 'dashboard:send_chat_message' active_project.slug active_chat.slug %}"
+                        class="composer"
+                        hx-post="{% url 'dashboard:send_chat_message' active_project.slug active_chat.slug %}"
+                        hx-target="#messages"
+                        hx-swap="innerHTML"
+                        data-chat-composer
+                    >
+                        {% csrf_token %}
+                        <textarea name="content" rows="2" placeholder="Message the assistant..." required></textarea>
+                        <select name="agent_name" class="composer-agent compact-form-control" aria-label="Agent mode" disabled>
+                            {% for mode in agent_modes %}
+                                <option value="{{ mode.value }}" {% if active_chat.agent_name == mode.value %}selected{% endif %}>{{ mode.label }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Send</button>
+                    </form>
+                {% else %}
+                    <div class="empty-state center-state">
+                        <h2>No chat selected</h2>
+                        <p>Create a chat in the sidebar to open the conversation UI.</p>
+                    </div>
+                {% endif %}
+            </section>
+
+            <aside class="documents-panel">
+                <h2>Documents</h2>
+                <form method="post" action="{% url 'dashboard:upload_document' active_project.slug %}" enctype="multipart/form-data" class="upload-form" data-upload-form>
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <label class="file-picker">
+                        <span>Choose file</span>
+                        <input type="file" name="file" required data-file-input>
+                    </label>
+                    <p class="file-status" data-file-status>No file chosen</p>
+                    <button type="submit" data-upload-button disabled>Upload</button>
+                </form>
+
+                {% if documents %}
+                    <div class="document-list">
+                        {% for document in documents %}
+                            <article class="document-row">
+                                <div>
+                                    <strong>{{ document.filename }}</strong>
+                                    <span>{{ document.status|default:"" }}</span>
+                                </div>
+                                <form method="post" action="{% url 'dashboard:delete_document' active_project.slug document.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="link-danger">Delete</button>
+                                </form>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="muted">No documents uploaded.</p>
+                {% endif %}
+            </aside>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

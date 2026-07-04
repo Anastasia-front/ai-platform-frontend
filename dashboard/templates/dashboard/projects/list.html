@@ -1,0 +1,46 @@
+{% extends "dashboard/app_base.html" %}
+
+{% block title %}Projects | AI Platform{% endblock %}
+
+{% block content %}
+<section class="page-panel">
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">Projects</p>
+            <h1>Your workspace</h1>
+        </div>
+        <a class="button" href="{% url 'dashboard:new_project' %}">Create Project</a>
+    </div>
+
+    {% if projects_error %}
+        <div class="empty-state">
+            <h2>Projects are unavailable</h2>
+            <p>{{ projects_error }}</p>
+        </div>
+    {% elif projects %}
+        <div class="project-grid">
+            {% for project in projects %}
+                <article class="project-card">
+                    <div>
+                        <h2><a href="{% url 'dashboard:project_detail' project.slug %}">{{ project.name }}</a></h2>
+                        <p>{{ project.description|default:"No description yet." }}</p>
+                    </div>
+                    <div class="card-footer">
+                        <span>{{ project.created_at|default:"" }}</span>
+                        <form method="post" action="{% url 'dashboard:delete_project' project.slug %}">
+                            {% csrf_token %}
+                            <button type="submit" class="link-danger">Delete</button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <h2>No projects yet</h2>
+            <p>Create a project to start chats and upload documents.</p>
+            <a class="button" href="{% url 'dashboard:new_project' %}">Create Project</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

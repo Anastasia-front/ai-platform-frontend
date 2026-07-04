@@ -1,0 +1,86 @@
+{% extends "dashboard/base.html" %}
+
+{% block body %}
+<div class="app-shell">
+    <aside class="sidebar" aria-label="Workspace navigation">
+        <a class="brand" href="{% url 'dashboard:projects' %}">
+            <span class="brand-mark">AI</span>
+            <span>
+                <strong>Automation Platform</strong>
+                <small>{{ current_user.email|default:"Workspace" }}</small>
+            </span>
+        </a>
+
+        <div class="sidebar-actions">
+            <a class="button full" href="{% url 'dashboard:new_project' %}">New Project</a>
+        </div>
+
+        <section class="sidebar-section">
+            <h2>Projects</h2>
+            {% if projects_error %}
+                <p class="sidebar-error">{{ projects_error }}</p>
+            {% elif projects %}
+                <nav class="resource-list">
+                    {% for project in projects %}
+                        <a href="{% url 'dashboard:project_detail' project.slug %}" {% if project.slug == active_project_slug %}class="active"{% endif %}>
+                            <span>{{ project.name }}</span>
+                        </a>
+                    {% endfor %}
+                </nav>
+            {% else %}
+                <p class="sidebar-empty">No projects yet.</p>
+            {% endif %}
+        </section>
+
+        {% if active_project %}
+            <section class="sidebar-section">
+                <div class="section-heading">
+                    <h2>Chats</h2>
+                </div>
+                <form method="post" action="{% url 'dashboard:new_chat' active_project.slug %}" class="compact-form chat-create-form">
+                    {% csrf_token %}
+                    <input type="text" name="title" placeholder="New chat title">
+                    <select name="agent_name" class="compact-form-control" aria-label="Agent mode">
+                        {% for mode in agent_modes %}
+                            <option value="{{ mode.value }}" {% if mode.value == "assistant" %}selected{% endif %}>{{ mode.label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">Create</button>
+                </form>
+
+                {% if chats %}
+                    <nav class="resource-list">
+                        {% for chat in chats %}
+                            <a href="{% url 'dashboard:chat_detail' active_project.slug chat.slug %}" {% if chat.slug == active_chat_slug %}class="active"{% endif %}>
+                                <span>{{ chat.title }}</span>
+                            </a>
+                        {% endfor %}
+                    </nav>
+                {% else %}
+                    <p class="sidebar-empty">No chats yet.</p>
+                {% endif %}
+            </section>
+        {% endif %}
+
+        <nav class="utility-nav">
+            <a href="{% url 'dashboard:providers' %}">Providers</a>
+            <a href="{% url 'dashboard:workflows' %}">Workflows</a>
+            <a href="{% url 'dashboard:executions' %}">Executions / Logs</a>
+            <a href="{% url 'dashboard:settings' %}">Settings</a>
+            <a href="{% url 'dashboard:logout' %}">Logout</a>
+        </nav>
+    </aside>
+
+    <main class="main">
+        {% if messages %}
+            <div class="flash-stack">
+                {% for message in messages %}
+                    <div class="flash {{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}

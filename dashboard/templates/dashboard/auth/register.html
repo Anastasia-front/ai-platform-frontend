@@ -1,0 +1,37 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Register | AI Platform{% endblock %}
+
+{% block body %}
+<main class="auth-page">
+    <section class="auth-card">
+        <div>
+            <span class="brand-mark">AI</span>
+            <h1>Create account</h1>
+            <p>Registration is backed by <code>POST /auth/register</code>.</p>
+        </div>
+
+        {% if messages %}
+            <div class="flash-stack">
+                {% for message in messages %}
+                    <div class="flash {{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" class="form-stack">
+            {% csrf_token %}
+            <label>
+                Email
+                <input type="email" name="email" autocomplete="email" required>
+            </label>
+            <label>
+                Password
+                <input type="password" name="password" autocomplete="new-password" required>
+            </label>
+            <button type="submit">Register</button>
+        </form>
+        <p class="muted">Already have an account? <a href="{% url 'dashboard:login' %}">Log in</a></p>
+    </section>
+</main>
+{% endblock %}

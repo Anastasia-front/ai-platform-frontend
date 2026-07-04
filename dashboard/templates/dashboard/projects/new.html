@@ -1,0 +1,30 @@
+{% extends "dashboard/app_base.html" %}
+
+{% block title %}New Project | AI Platform{% endblock %}
+
+{% block content %}
+<section class="page-panel narrow-panel">
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">Projects</p>
+            <h1>Create project</h1>
+        </div>
+    </div>
+
+    <form method="post" class="form-stack">
+        {% csrf_token %}
+        <label>
+            Name
+            <input type="text" name="name" required>
+        </label>
+        <label>
+            Description
+            <textarea name="description" rows="4"></textarea>
+        </label>
+        <div class="button-row">
+            <button type="submit">Create Project</button>
+            <a class="button secondary" href="{% url 'dashboard:projects' %}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
