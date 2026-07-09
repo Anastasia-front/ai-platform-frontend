@@ -3,24 +3,26 @@
 {% block title %}Settings | AI Platform{% endblock %}
 
 {% block content %}
-<section class="page-panel">
-    <div class="page-heading">
-        <div>
-            <p class="eyebrow">Settings</p>
-            <h1>Backend connection</h1>
+<div class="settings-content">
+    <section class="page-panel">
+        <div class="page-heading">
+            <div>
+                <p class="eyebrow">Settings</p>
+                <h1>Backend connection</h1>
+            </div>
         </div>
-    </div>
-    <dl class="settings-list">
-        <div>
-            <dt>BASE_API_URL</dt>
-            <dd><code>{{ backend_api_url }}</code></dd>
-        </div>
-        <div>
-            <dt>Session token</dt>
-            <dd>Stored server-side in the Django session.</dd>
-        </div>
-    </dl>
-</section>
+        <dl class="settings-list">
+            <div>
+                <dt>BASE_API_URL</dt>
+                <dd><code>{{ backend_api_url }}</code></dd>
+            </div>
+            <div>
+                <dt>Session token</dt>
+                <dd>Stored server-side in the Django session.</dd>
+            </div>
+        </dl>
+    </section>
 
-{% include "dashboard/partials/endpoint_panel.html" with title="Discovered Backend Endpoints" %}
+    {% include "dashboard/partials/endpoint_panel.html" with title="Discovered Backend Endpoints" %}
+</div>
 {% endblock %}

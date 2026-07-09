@@ -5,18 +5,21 @@
 {% block body %}
 <main class="auth-page">
     <section class="auth-card">
-        <div>
+        <div class="auth-brand brand">
             <span class="brand-mark">AI</span>
+            <span>
+                <strong>Automation Platform</strong> </span>
+        </div>
+        <div class="auth-copy">
             <h1>Log in</h1>
-            <p>Use your FastAPI backend account.</p>
         </div>
 
         {% if messages %}
-            <div class="flash-stack">
-                {% for message in messages %}
-                    <div class="flash {{ message.tags }}">{{ message }}</div>
-                {% endfor %}
-            </div>
+        <div class="flash-stack">
+            {% for message in messages %}
+            <div class="flash {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
         {% endif %}
 
         <form method="post" class="form-stack">
@@ -27,11 +30,36 @@
             </label>
             <label>
                 Password
-                <input type="password" name="password" autocomplete="current-password" required>
+                <span class="password-field">
+                    <input type="password" name="password" autocomplete="current-password" required>
+                    <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false">
+                        <svg class="password-icon password-icon-show" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                            <path d="M2.25 12s3.5-6.25 9.75-6.25S21.75 12 21.75 12 18.25 18.25 12 18.25 2.25 12 2.25 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 15.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <svg class="password-icon password-icon-hide" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M10.6 5.9c.45-.1.92-.15 1.4-.15 6.25 0 9.75 6.25 9.75 6.25a17.8 17.8 0 0 1-3.1 3.78M6.47 7.7A17.86 17.86 0 0 0 2.25 12S5.75 18.25 12 18.25c1.65 0 3.1-.44 4.33-1.07" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9.75 9.9a3.25 3.25 0 0 0 4.35 4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </span>
             </label>
             <button type="submit">Log in</button>
         </form>
-        <p class="muted">No account? <a href="{% url 'dashboard:register' %}">Register</a></p>
+        {% if google_oauth_enabled %}
+            <div class="auth-divider"><span>or</span></div>
+            <a class="button secondary full google-login-button" href="{% url 'dashboard:google_login' %}">
+                <svg class="google-logo" aria-hidden="true" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z"/>
+                </svg>
+                <span>Continue with Google</span>
+            </a>
+        {% endif %}
+        <p class="auth-footer muted">No account? <a href="{% url 'dashboard:register' %}">Register</a></p>
     </section>
 </main>
 {% endblock %}

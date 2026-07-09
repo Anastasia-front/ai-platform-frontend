@@ -1,0 +1,150 @@
+{% extends "dashboard/app_base.html" %}
+
+{% block title %}Execution #{{ workflow_run.id }} | AI Platform{% endblock %}
+
+{% block content %}
+<section class="execution-console">
+    <header class="workflow-header">
+        <div>
+            <p class="eyebrow">Executions / Logs</p>
+            <h1>Execution #{{ workflow_run.id }}</h1>
+            {% if workflow_run %}
+            <p class="muted">Workflow #{{ workflow_run.workflow_id }} · {{ workflow_run.status }} · {{ workflow_run.created_at }}</p>
+            {% endif %}
+        </div>
+        <a class="button blue-danger-button" href="{% url 'dashboard:executions' %}">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                <path d="m15 6-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+            </svg>
+            <span>All Executions</span>
+        </a>
+    </header>
+
+    {% if executions_error %}
+    <div class="notice danger-panel">{{ executions_error }}</div>
+    {% elif workflow_run %}
+    <div class="execution-summary-grid">
+        <article class="contract-result-card">
+            <span>Status</span>
+            <strong>{{ workflow_run.status }}</strong>
+        </article>
+        <article class="contract-result-card">
+            <span>Events</span>
+            <strong>{{ workflow_run_summary.event_count }}</strong>
+        </article>
+        {% if workflow_run_summary.template_type == "job-vacancy" %}
+        <article class="contract-result-card risk-card">
+            <span>Match score</span>
+            <strong>{{ workflow_run_summary.structured.score }}</strong>
+        </article>
+        <article class="contract-result-card wide summary-card">
+            <span>Comparison summary</span>
+            <p>{{ workflow_run_summary.structured.comparison }}</p>
+        </article>
+        <article class="contract-result-card wide">
+            <span>Strong matches</span>
+            {% if workflow_run_summary.structured.strong_matches %}
+            <div class="date-list">
+                {% for item in workflow_run_summary.structured.strong_matches %}
+                <div>
+                    <strong>{{ item.area }}</strong>
+                    {% if item.details %}<p>{{ item.details }}</p>{% endif %}
+                    {% if item.evidence %}<em>{{ item.evidence }}</em>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No structured strong matches were found in this run output.</p>
+            {% endif %}
+        </article>
+        <article class="contract-result-card wide">
+            <span>Missing requirements</span>
+            {% if workflow_run_summary.structured.missing_requirements %}
+            <div class="date-list">
+                {% for item in workflow_run_summary.structured.missing_requirements %}
+                <div>
+                    <strong>{{ item.area }}</strong>
+                    {% if item.details %}<p>{{ item.details }}</p>{% endif %}
+                    {% if item.evidence %}<em>{{ item.evidence }}</em>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No structured missing requirements were found in this run output.</p>
+            {% endif %}
+        </article>
+        <article class="contract-result-card wide summary-card">
+            <span>Seniority alignment</span>
+            <strong>{{ workflow_run_summary.structured.seniority_alignment.alignment|default:"Not specified" }}</strong>
+            <p>{{ workflow_run_summary.structured.seniority_alignment.details|default:"No seniority alignment returned." }}</p>
+            {% if workflow_run_summary.structured.seniority_alignment.evidence %}
+            <em>{{ workflow_run_summary.structured.seniority_alignment.evidence }}</em>
+            {% endif %}
+        </article>
+        <article class="contract-result-card wide summary-card">
+            <span>Cover letter</span>
+            <p>{{ workflow_run_summary.structured.cover_letter }}</p>
+        </article>
+        <article class="contract-result-card wide summary-card">
+            <span>Application note</span>
+            <p>{{ workflow_run_summary.structured.application_note }}</p>
+        </article>
+        {% endif %}
+        {% if workflow_run_summary.template_type == "contract-review" %}
+        <article class="contract-result-card wide summary-card">
+            <span>Summary</span>
+            <p>{{ workflow_run_summary.structured.summary }}</p>
+        </article>
+        <article class="contract-result-card risk-card">
+            <span>Risk level</span>
+            <strong>{{ workflow_run_summary.structured.risk_level }}</strong>
+        </article>
+        <article class="contract-result-card wide">
+            <span>Extracted dates</span>
+            {% if workflow_run_summary.structured.key_dates %}
+            <div class="date-list">
+                {% for item in workflow_run_summary.structured.key_dates %}
+                <div>
+                    <strong>{{ item.name }}</strong>
+                    <em>{{ item.date }}</em>
+                    {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No structured dates were found in this run output.</p>
+            {% endif %}
+        </article>
+        {% endif %}
+    </div>
+
+    <details class="execution-detail-panel">
+        <summary>Run input</summary>
+        <pre>{{ workflow_run.input }}</pre>
+    </details>
+
+    <details class="execution-detail-panel">
+        <summary>Run output</summary>
+        <pre>{{ workflow_run.output|default:"No output returned." }}</pre>
+    </details>
+
+    <details class="execution-detail-panel">
+        <summary>Events</summary>
+        {% if workflow_events %}
+        <div class="execution-event-list">
+            {% for event in workflow_events %}
+            <article>
+                <strong>{{ event.event_type }}</strong>
+                <span>{{ event.created_at }}</span>
+                <pre>{{ event.payload }}</pre>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted">No events were recorded for this run.</p>
+        {% endif %}
+    </details>
+    {% endif %}
+</section>
+{% endblock %}

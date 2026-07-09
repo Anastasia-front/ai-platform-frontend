@@ -3,5 +3,43 @@
 {% block title %}Executions / Logs | AI Platform{% endblock %}
 
 {% block content %}
-{% include "dashboard/partials/endpoint_panel.html" with title="Execution Endpoints" %}
+<section class="execution-console">
+    <header class="workflow-header">
+        <div>
+            <p class="eyebrow">Executions / Logs</p>
+            <h1>Workflow runs</h1>
+        </div>
+    </header>
+
+    <nav class="execution-tabs" aria-label="Execution project filter">
+        <a href="{% url 'dashboard:executions' %}" {% if not active_execution_project %}class="active"{% endif %}>All</a>
+        {% for project in execution_project_tabs %}
+            <a href="{% url 'dashboard:executions' %}?project={{ project.slug }}" {% if active_execution_project == project.slug %}class="active"{% endif %}>{{ project.name }}</a>
+        {% endfor %}
+    </nav>
+
+    {% if executions_error %}
+        <div class="notice danger-panel">{{ executions_error }}</div>
+    {% endif %}
+
+    {% if workflow_runs %}
+        <div class="execution-list">
+            {% for run in workflow_runs %}
+                <a href="{% url 'dashboard:execution_detail' run.id %}">
+                    <strong>Execution #{{ run.id }}</strong>
+                    <span>
+                        {% if run.project %}{{ run.project.name }} · {% endif %}
+                        Workflow #{{ run.workflow_id }} · {{ run.status }}
+                    </span>
+                    <small>{{ run.created_at }}</small>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state center-state">
+            <h2>No workflow runs yet</h2>
+            <p>Run a workflow from the builder and its summary will appear here.</p>
+        </div>
+    {% endif %}
+</section>
 {% endblock %}

@@ -2,12 +2,21 @@
 
 {% block body %}
 <div class="app-shell">
+    <div class="sidebar-hover-zone" data-sidebar-hover-zone aria-hidden="true"></div>
+    <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Close sidebar" aria-expanded="true">
+        <svg class="sidebar-toggle-icon sidebar-toggle-close" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="m15 6-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg class="sidebar-toggle-icon sidebar-toggle-open" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
     <aside class="sidebar" aria-label="Workspace navigation">
         <a class="brand" href="{% url 'dashboard:projects' %}">
             <span class="brand-mark">AI</span>
             <span>
                 <strong>Automation Platform</strong>
-                <small>{{ current_user.email|default:"Workspace" }}</small>
+                <small title="{{ current_user.email|default:'Workspace' }}">{{ current_user.email|default:"Workspace" }}</small>
             </span>
         </a>
 
@@ -40,11 +49,6 @@
                 <form method="post" action="{% url 'dashboard:new_chat' active_project.slug %}" class="compact-form chat-create-form">
                     {% csrf_token %}
                     <input type="text" name="title" placeholder="New chat title">
-                    <select name="agent_name" class="compact-form-control" aria-label="Agent mode">
-                        {% for mode in agent_modes %}
-                            <option value="{{ mode.value }}" {% if mode.value == "assistant" %}selected{% endif %}>{{ mode.label }}</option>
-                        {% endfor %}
-                    </select>
                     <button type="submit">Create</button>
                 </form>
 
@@ -63,12 +67,13 @@
         {% endif %}
 
         <nav class="utility-nav">
-            <a href="{% url 'dashboard:providers' %}">Providers</a>
-            <a href="{% url 'dashboard:workflows' %}">Workflows</a>
-            <a href="{% url 'dashboard:executions' %}">Executions / Logs</a>
-            <a href="{% url 'dashboard:settings' %}">Settings</a>
+            <a href="{% url 'dashboard:providers' %}" {% if current_url_name == 'providers' %}class="active"{% endif %}>Providers</a>
+            <a href="{% url 'dashboard:workflows' %}" {% if current_url_name == 'workflows' %}class="active"{% endif %}>Workflows</a>
+            <a href="{% url 'dashboard:executions' %}" {% if current_url_name == 'executions' or current_url_name == 'execution_detail' %}class="active"{% endif %}>Executions / Logs</a>
+            <a href="{% url 'dashboard:settings' %}" {% if current_url_name == 'settings' %}class="active"{% endif %}>Settings</a>
             <a href="{% url 'dashboard:logout' %}">Logout</a>
         </nav>
+        <div class="sidebar-resizer" data-sidebar-resizer role="separator" aria-orientation="vertical" aria-label="Resize sidebar"></div>
     </aside>
 
     <main class="main">

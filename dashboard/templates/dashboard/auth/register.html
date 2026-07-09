@@ -5,10 +5,14 @@
 {% block body %}
 <main class="auth-page">
     <section class="auth-card">
-        <div>
+        <div class="auth-brand brand">
             <span class="brand-mark">AI</span>
+            <span>
+                <strong>Automation Platform</strong>
+            </span>
+        </div>
+        <div class="auth-copy">
             <h1>Create account</h1>
-            <p>Registration is backed by <code>POST /auth/register</code>.</p>
         </div>
 
         {% if messages %}
@@ -27,11 +31,32 @@
             </label>
             <label>
                 Password
-                <input type="password" name="password" autocomplete="new-password" required>
+                <span class="password-field">
+                    <input
+                        type="password"
+                        name="password"
+                        autocomplete="new-password"
+                        minlength="6"
+                        pattern="(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}"
+                        title="Use at least 6 characters, one uppercase letter, one number, and one special character."
+                        required>
+                    <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false">
+                        <svg class="password-icon password-icon-show" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                            <path d="M2.25 12s3.5-6.25 9.75-6.25S21.75 12 21.75 12 18.25 18.25 12 18.25 2.25 12 2.25 12Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 15.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <svg class="password-icon password-icon-hide" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M10.6 5.9c.45-.1.92-.15 1.4-.15 6.25 0 9.75 6.25 9.75 6.25a17.8 17.8 0 0 1-3.1 3.78M6.47 7.7A17.86 17.86 0 0 0 2.25 12S5.75 18.25 12 18.25c1.65 0 3.1-.44 4.33-1.07" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9.75 9.9a3.25 3.25 0 0 0 4.35 4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </span>
+                <!-- <span class="field-hint">At least 6 characters, one uppercase letter, one number, and one special character.</span> -->
             </label>
             <button type="submit">Register</button>
         </form>
-        <p class="muted">Already have an account? <a href="{% url 'dashboard:login' %}">Log in</a></p>
+        <p class="auth-footer muted">Already have an account? <a href="{% url 'dashboard:login' %}">Log in</a></p>
     </section>
 </main>
 {% endblock %}

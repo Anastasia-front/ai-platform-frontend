@@ -3,5 +3,212 @@
 {% block title %}Providers | AI Platform{% endblock %}
 
 {% block content %}
-{% include "dashboard/partials/endpoint_panel.html" with title="Provider Endpoints" %}
+<section class="provider-console">
+    <header class="provider-header">
+        <div>
+            <p class="eyebrow">Platform configuration</p>
+            <h1>Providers</h1>
+        </div>
+        {% if provider_data %}
+            <div class="provider-current">
+                <span>Chat: <strong>{{ provider_data.current.chat.provider }}</strong> · {{ provider_data.current.chat.model|default:"No model" }}</span>
+                <span>Embeddings: <strong>{{ provider_data.current.embeddings.provider }}</strong> · {{ provider_data.current.embeddings.model|default:"No model" }}</span>
+            </div>
+        {% endif %}
+    </header>
+
+    {% if provider_error %}
+        <div class="notice danger-panel">{{ provider_error }}</div>
+    {% endif %}
+
+    {% if provider_data %}
+        <div class="provider-grid">
+            <section class="provider-section">
+                <div class="section-heading">
+                    <h2>Chat Providers</h2>
+                    <span>LLM responses for chats, agents, and workflows</span>
+                </div>
+                <div class="provider-card-grid">
+                    {% for provider in provider_data.chat %}
+                        <article class="provider-card {% if provider.active %}active{% endif %}">
+                            <div>
+                                <h3>{{ provider.name }}</h3>
+                                <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active %}Active{% else %}Available{% endif %}</span>
+                            </div>
+                            <p>{{ provider.default_model|default:"No default model saved" }}</p>
+                            <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
+                            <div class="provider-card-actions">
+                                <span>{% if provider.api_key_configured %}Key saved{% elif provider.supports_api_key %}No key{% else %}Local/no key{% endif %}</span>
+                                <form method="post" action="{% url 'dashboard:check_provider_health' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
+                                    <input type="hidden" name="kind" value="chat">
+                                    <input type="hidden" name="provider" value="{{ provider.name }}">
+                                    <input type="hidden" name="model" value="{{ provider.default_model }}">
+                                    <button type="submit" class="secondary">Check</button>
+                                </form>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="provider-section">
+                <div class="section-heading">
+                    <h2>Embedding Providers</h2>
+                    <span>Document retrieval, vector search, and RAG context</span>
+                </div>
+                <div class="provider-card-grid">
+                    {% for provider in provider_data.embeddings %}
+                        <article class="provider-card {% if provider.active %}active{% endif %}">
+                            <div>
+                                <h3>{{ provider.name }}</h3>
+                                <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active %}Active{% else %}Available{% endif %}</span>
+                            </div>
+                            <p>{{ provider.default_model|default:"No default model saved" }}</p>
+                            <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
+                            <div class="provider-card-actions">
+                                <span>{% if provider.api_key_configured %}Key saved{% elif provider.supports_api_key %}No key{% else %}Local/no key{% endif %}</span>
+                                <form method="post" action="{% url 'dashboard:check_provider_health' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
+                                    <input type="hidden" name="kind" value="embedding">
+                                    <input type="hidden" name="provider" value="{{ provider.name }}">
+                                    <input type="hidden" name="model" value="{{ provider.default_model }}">
+                                    <input type="hidden" name="dimensions" value="{{ provider_data.current.embeddings.dimensions }}">
+                                    <button type="submit" class="secondary">Check</button>
+                                </form>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        {% if provider_health_result %}
+            <div class="provider-result {% if provider_health_result.healthy %}success{% else %}failed{% endif %}">
+                <strong>{{ provider_health_result.kind }} / {{ provider_health_result.provider }}</strong>
+                <span>{{ provider_health_result.model }} · {{ provider_health_result.latency_ms }} ms</span>
+                <p>{{ provider_health_result.message }}</p>
+            </div>
+        {% endif %}
+
+        <div class="provider-control-grid">
+            <form method="post" action="{% url 'dashboard:update_chat_provider' %}" class="provider-form" data-provider-form="chat">
+                {% csrf_token %}
+                <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
+                <h2>Chat Defaults</h2>
+                <label>
+                    Provider
+                    <select name="provider" required data-provider-select>
+                        {% for provider in provider_data.chat %}
+                            <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Model
+                    <select name="model" required data-model-select data-current-model="{{ provider_data.current.chat.model }}"></select>
+                </label>
+                <label>
+                    Fallback model
+                    <select name="fallback_model" data-fallback-model-select data-current-model="{{ provider_data.current.chat.fallback_model|default:'' }}">
+                        <option value="">No fallback</option>
+                    </select>
+                </label>
+                <label>
+                    Base URL
+                    <input type="url" name="base_url" value="{{ provider_data.current.chat.base_url }}" placeholder="http://localhost:11434" required data-base-url-input>
+                </label>
+                <label>
+                    API key
+                    <input type="password" name="api_key" placeholder="{% if provider_data.current.chat.api_key_configured %}Saved. Leave blank to keep current key.{% else %}Paste key for remote providers{% endif %}">
+                </label>
+                <button type="submit">Save Chat Defaults</button>
+            </form>
+
+            <form method="post" action="{% url 'dashboard:update_embedding_provider' %}" class="provider-form" data-provider-form="embedding">
+                {% csrf_token %}
+                <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
+                <h2>Embedding Defaults</h2>
+                <label>
+                    Provider
+                    <select name="provider" required data-provider-select>
+                        {% for provider in provider_data.embeddings %}
+                            <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    Model <span class="field-note">Only 768-dimensional options are listed.</span>
+                    <select name="model" required data-model-select data-current-model="{{ provider_data.current.embeddings.model }}"></select>
+                </label>
+                <label>
+                    Dimensions
+                    <input type="number" name="dimensions" min="1" value="{{ provider_data.current.embeddings.dimensions }}" required data-dimensions-input>
+                </label>
+                <label>
+                    Base URL
+                    <input type="url" name="base_url" value="{{ provider_data.current.embeddings.base_url }}" placeholder="http://localhost:11434" required data-base-url-input>
+                </label>
+                <label>
+                    API key
+                    <input type="password" name="api_key" placeholder="{% if provider_data.current.embeddings.api_key_configured %}Saved. Leave blank to keep current key.{% else %}Paste key for remote providers{% endif %}">
+                </label>
+                <button type="submit">Save Embedding Defaults</button>
+            </form>
+        </div>
+
+        <section class="embedding-tools">
+            <div class="section-heading">
+                <h2>Embedding Rebuild / Sync</h2>
+                <span>Use after changing embedding provider, model, or dimensions</span>
+            </div>
+
+            {% if projects %}
+                <nav class="project-tabs compact-tabs" aria-label="Embedding project filter">
+                    {% for project in projects %}
+                        <a href="{% url 'dashboard:providers' %}?project={{ project.slug }}" {% if project.slug == active_project_slug %}class="active"{% endif %}>{{ project.name }}</a>
+                    {% endfor %}
+                </nav>
+            {% endif %}
+
+            {% if provider_project %}
+                <div class="embedding-actions">
+                    <form method="post" action="{% url 'dashboard:sync_embeddings' provider_project.slug %}">
+                        {% csrf_token %}
+                        <button type="submit">Sync Project Embeddings</button>
+                    </form>
+                    <span>{{ provider_project.name }}</span>
+                </div>
+
+                {% if provider_documents %}
+                    <div class="document-rebuild-list">
+                        {% for document in provider_documents %}
+                            <article>
+                                <div>
+                                    <strong>{{ document.filename }}</strong>
+                                    <span>{{ document.status }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</span>
+                                </div>
+                                <form method="post" action="{% url 'dashboard:rebuild_document_embeddings' provider_project.slug document.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="secondary" {% if not document.text %}disabled{% endif %}>Rebuild</button>
+                                </form>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="muted">No documents in this project yet.</p>
+                {% endif %}
+            {% endif %}
+
+            {% if embedding_tool_result %}
+                <div class="provider-result success">
+                    <strong>{{ embedding_tool_result.status }}</strong>
+                    <p>{{ embedding_tool_result.embeddings_created }} embeddings created.</p>
+                </div>
+            {% endif %}
+        </section>
+    {% endif %}
+</section>
 {% endblock %}
