@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AI Automation Platform">
+  <rect width="64" height="64" rx="14" fill="#0ea5e9"/>
+  <g fill="#ffffff" transform="translate(6 0)">
+    <path d="M9.5 45 20.7 19h5.6L37.5 45h-6.4l-2.2-5.5H18l-2.1 5.5H9.5Zm10.6-10.8h6.8l-3.4-8.7-3.4 8.7Z"/>
+    <path d="M40 45V19h5.8v26H40Z"/>
+  </g>
+</svg>
