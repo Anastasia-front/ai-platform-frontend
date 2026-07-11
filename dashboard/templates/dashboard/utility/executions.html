@@ -1,4 +1,5 @@
 {% extends "dashboard/app_base.html" %}
+{% load markdown_extras %}
 
 {% block title %}Executions / Logs | AI Platform{% endblock %}
 
@@ -31,7 +32,10 @@
                         {% if run.project %}{{ run.project.name }} · {% endif %}
                         Workflow #{{ run.workflow_id }} · {{ run.status }}
                     </span>
-                    <small>{{ run.created_at }}</small>
+                    {% if run.input_source %}
+                        <span>{{ run.input_source|truncate_chars:80 }}</span>
+                    {% endif %}
+                    <small>{{ run.created_at|human_datetime }}</small>
                 </a>
             {% endfor %}
         </div>

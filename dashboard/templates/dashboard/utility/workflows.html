@@ -1,4 +1,5 @@
 {% extends "dashboard/app_base.html" %}
+{% load markdown_extras %}
 
 {% block title %}Workflows | AI Platform{% endblock %}
 
@@ -31,20 +32,20 @@
     {% endif %}
     <section class="overflow-y">
         {% if workflow_project %}
-            <details class="workflow-templates-accordion" {% if open_workflow_template %}open{% endif %}>
+            <details class="workflow-templates-accordion" data-workflow-templates {% if open_workflow_template %}open{% endif %}>
                 <summary>Workflow templates</summary>
                 <div class="workflow-template-list">
-                    <details class="workflow-template-accordion" {% if open_workflow_template == "contract-review" %}open{% endif %}>
+                    <details class="workflow-template-accordion" data-template-key="contract-review" {% if open_workflow_template == "contract-review" %}open{% endif %}>
                         <summary>
                             <span>Contract review</span>
                             <small>{% if contract_review_workflow %}Ready{% else %}Not set up{% endif %}</small>
                         </summary>
             <section class="contract-review-panel workflow-template-body">
-                <div class="contract-review-main">
+                <div class="contract-review-main {% if not contract_review_workflow %}full-width{% endif %}">
                     <div>
                         <!-- <p class="eyebrow">Workflow template</p> -->
                         <!-- <h2>Contract review</h2> -->
-                        <p class="muted">Select a project document, run the workflow, and save structured dates, risk level, and summary.</p>
+                        <strong class="dark-blue-text">Select a project document, run the workflow, and save structured dates, risk level, and summary.</strong>
                     </div>
     
                     {% if contract_review_workflow %}
@@ -80,11 +81,15 @@
                             {% if not document.text %}
                                 <div>
                                     <span>{{ document.filename }} needs text extraction before review.</span>
-                                    <form method="post" action="{% url 'dashboard:process_document' workflow_project.slug document.id %}" data-loading-form>
-                                        {% csrf_token %}
-                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                        <button type="submit" class="process-button" data-loading-label="Processing...">Process</button>
-                                    </form>
+                                    {% if document.status in active_document_statuses %}
+                                        {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
+                                    {% else %}
+                                        <form method="post" action="{% url 'dashboard:process_document' workflow_project.slug document.id %}" data-loading-form>
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                            <button type="submit" class="process-button" data-loading-label="{% if document.status == 'failed' %}Retrying...{% else %}Queuing...{% endif %}">{% if document.status == 'failed' %}Retry{% else %}Process{% endif %}</button>
+                                        </form>
+                                    {% endif %}
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -103,58 +108,20 @@
                         </div>
                     {% endfor %}
                 </div>
-    
-                {% if contract_review_result %}
-                    <div class="contract-result-grid">
-                        <article class="contract-result-card">
-                            <span>Document</span>
-                            <strong>{{ contract_review_result.document_name }}</strong>
-                            <small>Saved {{ contract_review_result.created_at }}</small>
-                        </article>
-                        <article class="contract-result-card risk-card">
-                            <span>Risk level</span>
-                            <strong>{{ contract_review_result.structured.risk_level }}</strong>
-                        </article>
-                        <article class="contract-result-card wide summary-card">
-                            <span>Summary</span>
-                            <p>{{ contract_review_result.structured.summary }}</p>
-                        </article>
-                        <article class="contract-result-card wide">
-                            <span>Extracted dates</span>
-                            {% if contract_review_result.structured.key_dates %}
-                                <div class="date-list">
-                                    {% for item in contract_review_result.structured.key_dates %}
-                                        <div>
-                                            <strong>{{ item.name }}</strong>
-                                            <em>{{ item.date }}</em>
-                                            {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <p>No dates were returned in a structured format.</p>
-                            {% endif %}
-                        </article>
-                        <details class="raw-contract-output">
-                            <summary>Raw workflow output</summary>
-                            <pre>{{ contract_review_result.raw_output }}</pre>
-                        </details>
-                    </div>
-                {% endif %}
             </section>
                     </details>
     
-                    <details class="workflow-template-accordion" {% if open_workflow_template == "job-vacancy" %}open{% endif %}>
+                    <details class="workflow-template-accordion" data-template-key="job-vacancy" {% if open_workflow_template == "job-vacancy" %}open{% endif %}>
                         <summary>
                             <span>Vacancy helper</span>
                             <small>{% if job_vacancy_workflow %}Ready{% else %}Not set up{% endif %}</small>
                         </summary>
-            <section class="contract-review-panel job-vacancy-panel workflow-template-body">
-                <div class="contract-review-main">
+            <section class="contract-review-panel workflow-template-body">
+                <div class="contract-review-main {% if not job_vacancy_workflow %}full-width{% endif %}">
                     <div>
                         <!-- <p class="eyebrow">Workflow template</p> -->
                         <!-- <h2>Vacancy helper</h2> -->
-                        <p class="muted">Compare a vacancy with a CV, score the match, generate a cover letter, and save an application note.</p>
+                        <strong class="dark-blue-text">Compare a vacancy with a CV, score the match, generate a cover letter, and save an application note.</strong>
                     </div>
     
                     {% if job_vacancy_workflow %}
@@ -196,11 +163,15 @@
                             {% if not document.text %}
                                 <div>
                                     <span>{{ document.filename }} needs text extraction before it can be used as a CV.</span>
-                                    <form method="post" action="{% url 'dashboard:process_document' workflow_project.slug document.id %}" data-loading-form>
-                                        {% csrf_token %}
-                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                        <button type="submit" class="process-button" data-loading-label="Processing...">Process</button>
-                                    </form>
+                                    {% if document.status in active_document_statuses %}
+                                        {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
+                                    {% else %}
+                                        <form method="post" action="{% url 'dashboard:process_document' workflow_project.slug document.id %}" data-loading-form>
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                            <button type="submit" class="process-button" data-loading-label="{% if document.status == 'failed' %}Retrying...{% else %}Queuing...{% endif %}">{% if document.status == 'failed' %}Retry{% else %}Process{% endif %}</button>
+                                        </form>
+                                    {% endif %}
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -223,46 +194,121 @@
                         </div>
                     {% endfor %}
                 </div>
-    
-                {% if job_vacancy_result %}
-                    <div class="contract-result-grid">
-                        <article class="contract-result-card">
-                            <span>Vacancy</span>
-                            <strong>{{ job_vacancy_result.vacancy_source }}</strong>
-                            <small>Saved {{ job_vacancy_result.created_at }}</small>
-                        </article>
-                        <article class="contract-result-card">
-                            <span>CV</span>
-                            <strong>{{ job_vacancy_result.cv_document_name }}</strong>
-                        </article>
-                        <article class="contract-result-card risk-card">
-                            <span>Score</span>
-                            <strong>{{ job_vacancy_result.structured.score }}</strong>
-                        </article>
-                        <article class="contract-result-card wide summary-card">
-                            <span>Comparison</span>
-                            <p>{{ job_vacancy_result.structured.comparison }}</p>
-                        </article>
-                        <article class="contract-result-card wide summary-card">
-                            <span>Cover letter</span>
-                            <p>{{ job_vacancy_result.structured.cover_letter }}</p>
-                        </article>
-                        <article class="contract-result-card wide summary-card">
-                            <span>Application note</span>
-                            <p>{{ job_vacancy_result.structured.application_note }}</p>
-                        </article>
-                        <details class="raw-contract-output">
-                            <summary>Raw workflow output</summary>
-                            <pre>{{ job_vacancy_result.raw_output }}</pre>
-                        </details>
-                    </div>
-                {% endif %}
             </section>
                     </details>
+
+                    {% for template in workflow_templates %}
+                    <details class="workflow-template-accordion" data-template-key="{{ template.key }}" {% if open_workflow_template == template.key %}open{% endif %}>
+                        <summary>
+                            <span>{{ template.name }}</span>
+                            <small>{% if template.workflow %}Ready{% else %}Not set up{% endif %}</small>
+                        </summary>
+            <section class="contract-review-panel workflow-template-body">
+                <div class="contract-review-main {% if not template.workflow %}full-width{% endif %}">
+                    <div>
+                        <strong class="dark-blue-text">{{ template.description }}</strong>
+                    </div>
+
+                    {% if template.workflow %}
+                        <form method="post" action="{{ template.run_url }}" class="contract-review-form{% if template.multi_doc %} job-vacancy-form{% endif %}" data-loading-form>
+                            {% csrf_token %}
+                            {% if template.multi_doc %}
+                                <label>
+                                    Job description document
+                                    <select name="job_description_id" required {% if not project_documents %}disabled{% endif %}>
+                                        {% if project_documents %}
+                                            {% for document in project_documents %}
+                                                <option value="{{ document.id }}">{{ document.filename }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</option>
+                                            {% endfor %}
+                                        {% else %}
+                                            <option>No documents uploaded</option>
+                                        {% endif %}
+                                    </select>
+                                </label>
+                                <div class="wide-field cv-document-picker" data-cv-document-picker data-max-cv-documents="10">
+                                    CV documents
+                                    <div class="cv-document-picker-list" data-cv-document-list>
+                                        <label class="cv-document-picker-row">
+                                            <span>CV 1</span>
+                                            <select name="cv_document_ids" required {% if not project_documents %}disabled{% endif %}>
+                                                {% if project_documents %}
+                                                    <option value="">Select CV document</option>
+                                                    {% for document in project_documents %}
+                                                        <option value="{{ document.id }}">{{ document.filename }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</option>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <option value="">No documents uploaded</option>
+                                                {% endif %}
+                                            </select>
+                                        </label>
+                                    </div>
+                                    <small data-cv-document-limit hidden>Limit reached: 10 CV documents.</small>
+                                </div>
+                                <button type="submit" class="wide-field" data-loading-label="Running..." {% if not project_documents %}disabled{% endif %}>Run Workflow</button>
+                            {% else %}
+                                <label>
+                                    {{ template.select_label }}
+                                    <select name="document_id" required {% if not project_documents %}disabled{% endif %}>
+                                        {% if project_documents %}
+                                            {% for document in project_documents %}
+                                                <option value="{{ document.id }}">{{ document.filename }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</option>
+                                            {% endfor %}
+                                        {% else %}
+                                            <option>No documents uploaded</option>
+                                        {% endif %}
+                                    </select>
+                                </label>
+                                <button type="submit" data-loading-label="Running..." {% if not project_documents %}disabled{% endif %}>Run Workflow</button>
+                            {% endif %}
+                        </form>
+                    {% else %}
+                        <form method="post" action="{{ template.setup_url }}" class="contract-review-form setup-only" data-loading-form>
+                            {% csrf_token %}
+                            <button type="submit" data-loading-label="Setting up...">Set Up</button>
+                        </form>
+                    {% endif %}
+                </div>
+
+                {% if project_documents %}
+                    <div class="contract-document-readiness">
+                        {% for document in project_documents %}
+                            {% if not document.text %}
+                                <div>
+                                    <span>{{ document.filename }} needs text extraction before it can be used.</span>
+                                    {% if document.status in active_document_statuses %}
+                                        {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
+                                    {% else %}
+                                        <form method="post" action="{% url 'dashboard:process_document' workflow_project.slug document.id %}" data-loading-form>
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                            <button type="submit" class="process-button" data-loading-label="{% if document.status == 'failed' %}Retrying...{% else %}Queuing...{% endif %}">{% if document.status == 'failed' %}Retry{% else %}Process{% endif %}</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="contract-timeline" aria-label="{{ template.name }} step timeline">
+                    <div class="contract-timeline-item active">
+                        <span>1</span>
+                        <strong>{{ template.select_label|default:"Select document(s)" }}</strong>
+                    </div>
+                    {% for step in template.steps %}
+                        <div class="contract-timeline-item {% if template.workflow %}active{% endif %}">
+                            <span>{{ forloop.counter|add:1 }}</span>
+                            <strong>{{ step.name }}</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+                    </details>
+                    {% endfor %}
                 </div>
             </details>
         {% endif %}
-    
+
         <div class="workflow-layout">
             <aside class="workflow-list-panel">
                 <h2>Workflow List</h2>
@@ -293,7 +339,7 @@
                                 <summary>Workflow details</summary>
                                 <div class="workflow-detail-meta">
                                     <span>Status: {{ active_workflow.status }}</span>
-                                    <span>Created: {{ active_workflow.created_at }}</span>
+                                    <span>Created: {{ active_workflow.created_at|human_datetime }}</span>
                                     <span>Steps: {{ workflow_steps|length }}</span>
                                 </div>
                                 <div class="workflow-detail-steps">
@@ -369,7 +415,7 @@
                                 <div class="run-result">
                                     <strong>Latest result</strong>
                                     <p>{{ run_result.output|default:"No output returned." }}</p>
-                                    <span>{{ run_result.created_at }}</span>
+                                    <span>{{ run_result.created_at|human_datetime }}</span>
                                 </div>
                             {% endif %}
                         </form>

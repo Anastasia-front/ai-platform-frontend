@@ -1,4 +1,5 @@
 {% extends "dashboard/app_base.html" %}
+{% load markdown_extras %}
 
 {% block title %}Execution #{{ workflow_run.id }} | AI Platform{% endblock %}
 
@@ -9,7 +10,10 @@
             <p class="eyebrow">Executions / Logs</p>
             <h1>Execution #{{ workflow_run.id }}</h1>
             {% if workflow_run %}
-            <p class="muted">Workflow #{{ workflow_run.workflow_id }} · {{ workflow_run.status }} · {{ workflow_run.created_at }}</p>
+            <p class="muted">{{ workflow_run_summary.template_name|default:"Workflow" }} · {% include "dashboard/partials/execution_status.html" %} · {{ workflow_run.created_at|human_datetime }}</p>
+            {% if workflow_run_summary.input_source %}
+            <p class="muted">{{ workflow_run_summary.input_source|truncate_chars:100 }}</p>
+            {% endif %}
             {% endif %}
         </div>
         <a class="button blue-danger-button" href="{% url 'dashboard:executions' %}">
@@ -25,14 +29,16 @@
     <div class="notice danger-panel">{{ executions_error }}</div>
     {% elif workflow_run %}
     <div class="execution-summary-grid">
-        <article class="contract-result-card">
-            <span>Status</span>
-            <strong>{{ workflow_run.status }}</strong>
-        </article>
-        <article class="contract-result-card">
-            <span>Events</span>
-            <strong>{{ workflow_run_summary.event_count }}</strong>
-        </article>
+        <div>
+            <article class="contract-result-card">
+                <span>Status</span>
+                {% include "dashboard/partials/execution_status.html" %}
+            </article>
+            <article class="contract-result-card">
+                <span>Events</span>
+                <strong>{{ workflow_run_summary.event_count }}</strong>
+            </article>
+        </div>
         {% if workflow_run_summary.template_type == "job-vacancy" %}
         <article class="contract-result-card risk-card">
             <span>Match score</span>
@@ -40,7 +46,7 @@
         </article>
         <article class="contract-result-card wide summary-card">
             <span>Comparison summary</span>
-            <p>{{ workflow_run_summary.structured.comparison }}</p>
+            <div class="rich-text">{{ workflow_run_summary.structured.comparison|render_markdown }}</div>
         </article>
         <article class="contract-result-card wide">
             <span>Strong matches</span>
@@ -49,7 +55,7 @@
                 {% for item in workflow_run_summary.structured.strong_matches %}
                 <div>
                     <strong>{{ item.area }}</strong>
-                    {% if item.details %}<p>{{ item.details }}</p>{% endif %}
+                    {% if item.details %}<div class="rich-text">{{ item.details|render_markdown }}</div>{% endif %}
                     {% if item.evidence %}<em>{{ item.evidence }}</em>{% endif %}
                 </div>
                 {% endfor %}
@@ -65,7 +71,7 @@
                 {% for item in workflow_run_summary.structured.missing_requirements %}
                 <div>
                     <strong>{{ item.area }}</strong>
-                    {% if item.details %}<p>{{ item.details }}</p>{% endif %}
+                    {% if item.details %}<div class="rich-text">{{ item.details|render_markdown }}</div>{% endif %}
                     {% if item.evidence %}<em>{{ item.evidence }}</em>{% endif %}
                 </div>
                 {% endfor %}
@@ -77,24 +83,24 @@
         <article class="contract-result-card wide summary-card">
             <span>Seniority alignment</span>
             <strong>{{ workflow_run_summary.structured.seniority_alignment.alignment|default:"Not specified" }}</strong>
-            <p>{{ workflow_run_summary.structured.seniority_alignment.details|default:"No seniority alignment returned." }}</p>
+            <div class="rich-text">{{ workflow_run_summary.structured.seniority_alignment.details|default:"No seniority alignment returned."|render_markdown }}</div>
             {% if workflow_run_summary.structured.seniority_alignment.evidence %}
             <em>{{ workflow_run_summary.structured.seniority_alignment.evidence }}</em>
             {% endif %}
         </article>
         <article class="contract-result-card wide summary-card">
             <span>Cover letter</span>
-            <p>{{ workflow_run_summary.structured.cover_letter }}</p>
+            <div class="rich-text">{{ workflow_run_summary.structured.cover_letter|render_markdown }}</div>
         </article>
         <article class="contract-result-card wide summary-card">
             <span>Application note</span>
-            <p>{{ workflow_run_summary.structured.application_note }}</p>
+            <div class="rich-text">{{ workflow_run_summary.structured.application_note|render_markdown }}</div>
         </article>
         {% endif %}
         {% if workflow_run_summary.template_type == "contract-review" %}
         <article class="contract-result-card wide summary-card">
             <span>Summary</span>
-            <p>{{ workflow_run_summary.structured.summary }}</p>
+            <div class="rich-text">{{ workflow_run_summary.structured.summary|render_markdown }}</div>
         </article>
         <article class="contract-result-card risk-card">
             <span>Risk level</span>
@@ -117,6 +123,45 @@
             {% endif %}
         </article>
         {% endif %}
+        {% if workflow_run_summary.template_type != "job-vacancy" and workflow_run_summary.template_type != "contract-review" %}
+        {% if workflow_run_summary.rows %}
+        {% for row in workflow_run_summary.rows %}
+        <article class="contract-result-card {% if row.type == 'text' %}wide summary-card{% endif %}">
+            <span>{{ row.label }}</span>
+            {% if row.type == 'text' %}
+            <div class="rich-text">{{ row.value|render_markdown }}</div>
+            {% elif row.type == 'list' %}
+            <ul>
+                {% for item in row.items %}<li><div class="rich-text">{{ item|render_markdown }}</div></li>{% endfor %}
+            </ul>
+            {% elif row.type == 'list_of_dicts' %}
+            <div class="date-list">
+                {% for item in row.items %}
+                <div>
+                    {% for field_key, field_value in item.items %}
+                    <strong>{{ field_key }}:</strong>
+                    <div class="rich-text">{{ field_value|render_markdown }}</div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            {% elif row.type == 'dict' %}
+            <div>
+                {% for field_key, field_value in row.items.items %}
+                <strong>{{ field_key }}:</strong>
+                <div class="rich-text">{{ field_value|render_markdown }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+        {% else %}
+        <article class="contract-result-card wide summary-card">
+            <span>Result</span>
+            <p>No structured result fields were found for this run.</p>
+        </article>
+        {% endif %}
+        {% endif %}
     </div>
 
     <details class="execution-detail-panel">
@@ -136,7 +181,7 @@
             {% for event in workflow_events %}
             <article>
                 <strong>{{ event.event_type }}</strong>
-                <span>{{ event.created_at }}</span>
+                <span>{{ event.created_at|human_datetime }}</span>
                 <pre>{{ event.payload }}</pre>
             </article>
             {% endfor %}

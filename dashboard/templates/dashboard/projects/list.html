@@ -1,4 +1,5 @@
 {% extends "dashboard/app_base.html" %}
+{% load markdown_extras %}
 
 {% block title %}Projects | AI Platform{% endblock %}
 
@@ -26,7 +27,7 @@
                         <p>{{ project.description|default:"No description yet." }}</p>
                     </div>
                     <div class="card-footer">
-                        <span>{{ project.created_at|default:"" }}</span>
+                        <span>{{ project.created_at|human_datetime }}</span>
                         <form method="post" action="{% url 'dashboard:delete_project' project.slug %}">
                             {% csrf_token %}
                             <button type="submit" class="link-danger">Delete</button>

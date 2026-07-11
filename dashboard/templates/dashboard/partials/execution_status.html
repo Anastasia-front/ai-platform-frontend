@@ -1,0 +1,19 @@
+{% if workflow_run %}
+<strong
+    id="execution-status-{{ workflow_run.id }}"
+    class="status-badge status-{{ workflow_run.status }}"
+    {% if workflow_run.status in active_run_statuses %}
+    hx-get="{% url 'dashboard:execution_status_partial' run_id=workflow_run.id %}"
+    hx-trigger="every 3s"
+    hx-swap="outerHTML"
+    {% endif %}
+>{{ workflow_run.status }}</strong>
+{% if workflow_run.status not in active_run_statuses %}
+<a class="muted" href="{% url 'dashboard:execution_detail' run_id=workflow_run.id %}">View full results ↻</a>
+{% endif %}
+{% if workflow_run.error %}
+<span class="muted document-status-error">{{ workflow_run.error }}</span>
+{% endif %}
+{% else %}
+<strong class="status-badge status-unknown">unavailable</strong>
+{% endif %}

@@ -51,7 +51,7 @@
                                 <option value="{{ mode.value }}" {% if mode.value == "assistant" %}selected{% endif %}>{{ mode.label }}</option>
                             {% endfor %}
                         </select>
-                        <button type="submit">Send</button>
+                        <button type="submit" data-loading-label="Sending...">Send</button>
                     </form>
                 {% else %}
                     <div class="empty-state center-state">
@@ -81,14 +81,14 @@
                             <article class="document-row">
                                 <div>
                                     <strong>{{ document.filename }}</strong>
-                                    <span>{{ document.status|default:"" }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</span>
+                                    {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
                                 </div>
                                 <div class="document-actions">
                                     {% if not document.text %}
                                         <form method="post" action="{% url 'dashboard:process_document' active_project.slug document.id %}" data-loading-form>
                                             {% csrf_token %}
                                             <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                            <button type="submit" class="process-button" data-loading-label="Processing...">Process</button>
+                                            <button type="submit" class="process-button" data-loading-label="{% if document.status == 'uploaded' %}Queuing...{% elif document.status == 'queued' %}Queued...{% elif document.status == 'processing' %}Processing...{% elif document.status == 'indexed' %}Indexing...{% elif document.status == 'failed' %}Retrying...{% else %}Processing...{% endif %}">Process</button>
                                         </form>
                                     {% endif %}
                                     <form method="post" action="{% url 'dashboard:delete_document' active_project.slug document.id %}">

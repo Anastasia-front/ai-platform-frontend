@@ -39,13 +39,13 @@
                             <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
                             <div class="provider-card-actions">
                                 <span>{% if provider.api_key_configured %}Key saved{% elif provider.supports_api_key %}No key{% else %}Local/no key{% endif %}</span>
-                                <form method="post" action="{% url 'dashboard:check_provider_health' %}">
+                                <form method="post" action="{% url 'dashboard:check_provider_health' %}" data-loading-form>
                                     {% csrf_token %}
                                     <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
                                     <input type="hidden" name="kind" value="chat">
                                     <input type="hidden" name="provider" value="{{ provider.name }}">
                                     <input type="hidden" name="model" value="{{ provider.default_model }}">
-                                    <button type="submit" class="secondary">Check</button>
+                                    <button type="submit" class="secondary" data-loading-label="Checking...">Check</button>
                                 </form>
                             </div>
                         </article>
@@ -69,14 +69,14 @@
                             <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
                             <div class="provider-card-actions">
                                 <span>{% if provider.api_key_configured %}Key saved{% elif provider.supports_api_key %}No key{% else %}Local/no key{% endif %}</span>
-                                <form method="post" action="{% url 'dashboard:check_provider_health' %}">
+                                <form method="post" action="{% url 'dashboard:check_provider_health' %}" data-loading-form>
                                     {% csrf_token %}
                                     <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
                                     <input type="hidden" name="kind" value="embedding">
                                     <input type="hidden" name="provider" value="{{ provider.name }}">
                                     <input type="hidden" name="model" value="{{ provider.default_model }}">
                                     <input type="hidden" name="dimensions" value="{{ provider_data.current.embeddings.dimensions }}">
-                                    <button type="submit" class="secondary">Check</button>
+                                    <button type="submit" class="secondary" data-loading-label="Checking...">Check</button>
                                 </form>
                             </div>
                         </article>
@@ -108,14 +108,13 @@
                 </label>
                 <label>
                     Model
-                    <select name="model" required data-model-select data-current-model="{{ provider_data.current.chat.model }}"></select>
+                    <input type="text" name="model" value="{{ provider_data.current.chat.model }}" placeholder="e.g. openai/gpt-4o-mini" required data-model-input>
                 </label>
                 <label>
                     Fallback model
-                    <select name="fallback_model" data-fallback-model-select data-current-model="{{ provider_data.current.chat.fallback_model|default:'' }}">
-                        <option value="">No fallback</option>
-                    </select>
+                    <input type="text" name="fallback_model" value="{{ provider_data.current.chat.fallback_model|default:'' }}" placeholder="Optional fallback model" data-fallback-model-input>
                 </label>
+                <datalist id="chat-model-suggestions"></datalist>
                 <label>
                     Base URL
                     <input type="url" name="base_url" value="{{ provider_data.current.chat.base_url }}" placeholder="http://localhost:11434" required data-base-url-input>
@@ -140,9 +139,11 @@
                     </select>
                 </label>
                 <label>
-                    Model <span class="field-note">Only 768-dimensional options are listed.</span>
-                    <select name="model" required data-model-select data-current-model="{{ provider_data.current.embeddings.model }}"></select>
+                    Model 
+                    <!-- <span class="field-note">Type any model supported by your provider.</span> -->
+                    <input type="text" name="model" value="{{ provider_data.current.embeddings.model }}" placeholder="e.g. text-embedding-004" required data-model-input>
                 </label>
+                <datalist id="embedding-model-suggestions"></datalist>
                 <label>
                     Dimensions
                     <input type="number" name="dimensions" min="1" value="{{ provider_data.current.embeddings.dimensions }}" required data-dimensions-input>
@@ -175,9 +176,9 @@
 
             {% if provider_project %}
                 <div class="embedding-actions">
-                    <form method="post" action="{% url 'dashboard:sync_embeddings' provider_project.slug %}">
+                    <form method="post" action="{% url 'dashboard:sync_embeddings' provider_project.slug %}" data-loading-form>
                         {% csrf_token %}
-                        <button type="submit">Sync Project Embeddings</button>
+                        <button type="submit" data-loading-label="Syncing...">Sync Project Embeddings</button>
                     </form>
                     <span>{{ provider_project.name }}</span>
                 </div>
@@ -190,9 +191,9 @@
                                     <strong>{{ document.filename }}</strong>
                                     <span>{{ document.status }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</span>
                                 </div>
-                                <form method="post" action="{% url 'dashboard:rebuild_document_embeddings' provider_project.slug document.id %}">
+                                <form method="post" action="{% url 'dashboard:rebuild_document_embeddings' provider_project.slug document.id %}" data-loading-form>
                                     {% csrf_token %}
-                                    <button type="submit" class="secondary" {% if not document.text %}disabled{% endif %}>Rebuild</button>
+                                    <button type="submit" class="secondary" data-loading-label="Rebuilding..." {% if not document.text %}disabled{% endif %}>Rebuild</button>
                                 </form>
                             </article>
                         {% endfor %}

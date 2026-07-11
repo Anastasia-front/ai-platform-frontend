@@ -10,11 +10,19 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <link rel="stylesheet" href="{% static 'dashboard/styles.css' %}">
     <script src="{% static 'dashboard/sidebar.js' %}" defer></script>
+    <script src="{% static 'dashboard/loading_buttons.js' %}" defer></script>
     <script src="{% static 'dashboard/providers.js' %}" defer></script>
     <script src="{% static 'dashboard/chat.js' %}" defer></script>
+    <script src="{% static 'dashboard/workflows.js' %}" defer></script>
     <script src="{% static 'dashboard/auth.js' %}" defer></script>
 </head>
-<body>
+<body
+    {% if request.session.refresh_token %}
+        data-auth-refresh-url="{% url 'dashboard:refresh_session' %}"
+        data-auth-login-url="{% url 'dashboard:login' %}"
+        data-auth-refresh-seconds="{{ request.session.access_token_expires_in|default:1800 }}"
+    {% endif %}
+>
     {% block body %}{% endblock %}
 </body>
 </html>
