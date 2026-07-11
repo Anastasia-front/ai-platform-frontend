@@ -4,13 +4,16 @@ from urllib.parse import urlencode
 import requests
 from django.conf import settings as django_settings
 from django.contrib import messages as django_messages
+from django.http import JsonResponse
 from django.shortcuts import redirect
+from django.views.decorators.http import require_POST
 
 from ..services import backend_api
 from .utils import (
     exchange_google_code,
     google_oauth_enabled,
     google_redirect_uri,
+    refresh_session_token,
     render_auth,
     session_token,
     store_login_session,
@@ -119,3 +122,17 @@ def register_view(request):
 def logout_view(request):
     request.session.flush()
     return redirect("dashboard:login")
+
+
+@require_POST
+def refresh_session_view(request):
+    if refresh_session_token(request):
+        return JsonResponse(
+            {
+                "ok": True,
+                "expires_in": request.session.get("access_token_expires_in", 1800),
+            }
+        )
+
+    request.session.flush()
+    return JsonResponse({"ok": False, "login_url": "/login/"}, status=401)

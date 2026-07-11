@@ -63,6 +63,7 @@ def project_detail(request, project_slug):
             "title",
         )
         context["documents"] = backend_api.list_project_documents(token, project["id"])
+        context["active_document_statuses"] = {"queued", "processing"}
     except backend_api.BackendAPIError as exc:
         handle_api_error(request, exc)
         context["page_error"] = exc.message

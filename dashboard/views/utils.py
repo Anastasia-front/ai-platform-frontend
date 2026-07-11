@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from functools import wraps
 
 import requests
@@ -16,6 +17,7 @@ MAIN_ENDPOINTS = [
     {"method": "POST", "path": "/auth/register", "area": "Auth"},
     {"method": "POST", "path": "/auth/login", "area": "Auth"},
     {"method": "POST", "path": "/auth/google", "area": "Auth"},
+    {"method": "POST", "path": "/auth/refresh", "area": "Auth"},
     {"method": "GET", "path": "/auth/me", "area": "Auth"},
     {"method": "GET", "path": "/providers", "area": "Providers"},
     {"method": "GET", "path": "/providers/config", "area": "Providers"},
@@ -167,14 +169,430 @@ JOB_VACANCY_STEPS = [
 ]
 
 
+WORKFLOW_TEMPLATES = [
+    {
+        "key": "contract-review",
+        "name": CONTRACT_REVIEW_NAME,
+        "description": "Select a project document, run the workflow, and save structured dates, risk level, and summary.",
+        "select_label": "Select project document",
+        "output_shape": {"key_dates": [], "risk_level": "", "summary": ""},
+        "steps": CONTRACT_REVIEW_STEPS,
+        "form_type": "single_document",
+        "hidden_from_generic_loop": True,
+        "input_builder": lambda template, document: contract_review_input(document),
+        "output_parser": lambda output: parse_contract_review_output(output),
+    },
+    {
+        "key": "job-vacancy",
+        "name": JOB_VACANCY_NAME,
+        "description": "Compare a vacancy with a CV, score the match, generate a cover letter, and save an application note.",
+        "output_shape": {
+            "score": 0,
+            "comparison": "",
+            "cover_letter": "",
+            "application_note": "",
+        },
+        "steps": JOB_VACANCY_STEPS,
+        "form_type": "vacancy",
+        "hidden_from_generic_loop": True,
+        "input_builder": (
+            lambda template, vacancy_link, vacancy_context, cv_document: job_vacancy_input(
+                vacancy_link=vacancy_link,
+                vacancy_context=vacancy_context,
+                cv_document=cv_document,
+            )
+        ),
+        "output_parser": lambda output: parse_job_vacancy_output(output),
+    },
+    {
+        "key": "invoice-processing",
+        "name": "Invoice processing",
+        "description": "Extract invoice information and produce structured accounting data.",
+        "select_label": "Select invoice document",
+        "output_shape": {
+            "vendor": "",
+            "invoice_number": "",
+            "invoice_date": "",
+            "due_date": "",
+            "currency": "",
+            "subtotal": 0,
+            "tax": 0,
+            "total": 0,
+            "warnings": [],
+            "summary": "",
+        },
+        "steps": [
+            {
+                "order": 1,
+                "name": "Extract vendor & invoice fields",
+                "prompt": (
+                    "Extract the vendor name, invoice number, invoice date, due date, "
+                    "currency, subtotal, tax, and total from the invoice below.\n\n{{input}}"
+                ),
+            },
+            {
+                "order": 2,
+                "name": "Validate totals & dates",
+                "prompt": (
+                    "Validate that subtotal plus tax equals total and that all dates are "
+                    "consistent and well-formed. Note any discrepancies.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 3,
+                "name": "Detect missing information",
+                "prompt": (
+                    "List any missing or inconsistent invoice fields as warnings.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 4,
+                "name": "Generate accounting summary",
+                "prompt": (
+                    "Write a short accounting summary of this invoice.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 5,
+                "name": "Save structured invoice",
+                "prompt": (
+                    "Return ONLY valid JSON with this exact shape: \n"
+                    '{"vendor":"...","invoice_number":"...","invoice_date":"...",'
+                    '"due_date":"...","currency":"...","subtotal":0,"tax":0,"total":0,'
+                    '"warnings":["..."],"summary":"..."}. \n'
+                    "Use the invoice and previous workflow outputs.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+        ],
+    },
+    {
+        "key": "meeting-minutes",
+        "name": "Meeting minutes generator",
+        "description": "Turn a meeting transcript into actionable notes.",
+        "select_label": "Select transcript document",
+        "output_shape": {
+            "summary": "",
+            "decisions": [],
+            "action_items": [],
+            "participants": [],
+            "deadlines": [],
+        },
+        "steps": [
+            {
+                "order": 1,
+                "name": "Extract key discussion points",
+                "prompt": (
+                    "Extract the key discussion points from the meeting transcript below.\n\n{{input}}"
+                ),
+            },
+            {
+                "order": 2,
+                "name": "Identify decisions",
+                "prompt": (
+                    "Identify all decisions made during the meeting.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 3,
+                "name": "Extract action items",
+                "prompt": (
+                    "Extract action items from the meeting.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 4,
+                "name": "Assign responsibilities",
+                "prompt": (
+                    "Assign a responsible participant and deadline (if mentioned) to each action item.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 5,
+                "name": "Save meeting summary",
+                "prompt": (
+                    "Return ONLY valid JSON with this exact shape: \n"
+                    '{"summary":"...","decisions":["..."],"action_items":["..."],'
+                    '"participants":["..."],"deadlines":["..."]}. \n'
+                    "Use the transcript and previous workflow outputs.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+        ],
+    },
+    {
+        "key": "email-processing",
+        "name": "Email processing assistant",
+        "description": "Process long email threads into a summary, reply, and follow-ups.",
+        "select_label": "Select email thread document",
+        "output_shape": {
+            "summary": "",
+            "reply": "",
+            "tasks": [],
+            "questions": [],
+        },
+        "steps": [
+            {
+                "order": 1,
+                "name": "Summarize conversation",
+                "prompt": "Summarize the email thread below.\n\n{{input}}",
+            },
+            {
+                "order": 2,
+                "name": "Extract questions",
+                "prompt": (
+                    "Extract all open questions raised in the thread.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 3,
+                "name": "Draft reply",
+                "prompt": (
+                    "Draft a concise reply addressing the open questions.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 4,
+                "name": "Identify follow-up tasks",
+                "prompt": (
+                    "Identify any follow-up tasks implied by the thread.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 5,
+                "name": "Save structured result",
+                "prompt": (
+                    "Return ONLY valid JSON with this exact shape: \n"
+                    '{"summary":"...","reply":"...","tasks":["..."],"questions":["..."]}. \n'
+                    "Use the thread and previous workflow outputs.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+        ],
+    },
+    {
+        "key": "requirements-to-tasks",
+        "name": "Requirements to development tasks",
+        "description": "Turn requirements into an estimated development backlog.",
+        "select_label": "Select requirements document",
+        "output_shape": {
+            "epics": [],
+            "stories": [],
+            "technical_tasks": [],
+            "risks": [],
+            "summary": "",
+        },
+        "steps": [
+            {
+                "order": 1,
+                "name": "Extract functional requirements",
+                "prompt": (
+                    "Extract the functional requirements from the document below.\n\n{{input}}"
+                ),
+            },
+            {
+                "order": 2,
+                "name": "Extract technical requirements",
+                "prompt": (
+                    "Extract the technical requirements and constraints.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 3,
+                "name": "Generate development tasks",
+                "prompt": (
+                    "Generate epics, stories, and technical tasks covering the requirements.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 4,
+                "name": "Estimate complexity",
+                "prompt": (
+                    "Estimate complexity and highlight delivery risks for the generated tasks.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 5,
+                "name": "Save backlog",
+                "prompt": (
+                    "Return ONLY valid JSON with this exact shape: \n"
+                    '{"epics":["..."],"stories":["..."],"technical_tasks":["..."],'
+                    '"risks":["..."],"summary":"..."}. \n'
+                    "Use the requirements and previous workflow outputs.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+        ],
+    },
+    {
+        "key": "sop-generator",
+        "name": "SOP / Process generator",
+        "description": "Turn a process description into internal SOP documentation.",
+        "select_label": "Select process description document",
+        "output_shape": {
+            "purpose": "",
+            "steps": [],
+            "risks": [],
+            "recommendations": [],
+            "summary": "",
+        },
+        "steps": [
+            {
+                "order": 1,
+                "name": "Identify workflow stages",
+                "prompt": (
+                    "Identify the distinct stages of the process described below.\n\n{{input}}"
+                ),
+            },
+            {
+                "order": 2,
+                "name": "Generate SOP",
+                "prompt": (
+                    "Generate a standard operating procedure covering the purpose and steps.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 3,
+                "name": "Highlight risks",
+                "prompt": (
+                    "Highlight the operational risks in this process.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 4,
+                "name": "Suggest improvements",
+                "prompt": (
+                    "Suggest improvements to the process.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 5,
+                "name": "Save documentation",
+                "prompt": (
+                    "Return ONLY valid JSON with this exact shape: \n"
+                    '{"purpose":"...","steps":["..."],"risks":["..."],'
+                    '"recommendations":["..."],"summary":"..."}. \n'
+                    "Use the process description and previous workflow outputs.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+        ],
+    },
+    {
+        "key": "resume-screening",
+        "name": "Resume screening",
+        "description": "Evaluate and rank candidate CVs against a job description.",
+        "multi_doc": True,
+        "output_shape": {
+            "ranked_candidates": [],
+            "interview_questions": [],
+            "recommendation": "",
+        },
+        "steps": [
+            {
+                "order": 1,
+                "name": "Evaluate candidates",
+                "prompt": (
+                    "Evaluate each candidate CV against the job description below.\n\n{{input}}"
+                ),
+            },
+            {
+                "order": 2,
+                "name": "Rank candidates",
+                "prompt": (
+                    "Rank the candidates from strongest to weakest fit, with reasoning.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 3,
+                "name": "Generate interview questions",
+                "prompt": (
+                    "Generate targeted interview questions based on the candidate gaps found.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+            {
+                "order": 4,
+                "name": "Save shortlist",
+                "prompt": (
+                    "Return ONLY valid JSON with this exact shape: \n"
+                    '{"ranked_candidates":["..."],"interview_questions":["..."],'
+                    '"recommendation":"..."}. \n'
+                    "Use the job description, CVs, and previous workflow outputs.\n\n"
+                    "{{input}}\n\nPrevious outputs:\n{{dependency_outputs}}"
+                ),
+            },
+        ],
+    },
+]
+
+
 def session_token(request):
     return request.session.get("access_token")
+
+
+def refresh_session_token(request):
+    refresh_token = request.session.get("refresh_token")
+    if not refresh_token:
+        return False
+
+    try:
+        token_payload = backend_api.refresh_token(refresh_token)
+    except backend_api.BackendAPIError:
+        request.session.pop("access_token", None)
+        request.session.pop("refresh_token", None)
+        return False
+
+    store_login_session(
+        request,
+        token_payload,
+        fallback_email=request.session.get("user", {}).get("email", ""),
+        refresh_user=False,
+    )
+    return True
+
+
+def refresh_session_token_if_needed(request):
+    if not session_token(request):
+        return refresh_session_token(request)
+
+    refreshed_at = request.session.get("access_token_refreshed_at")
+    expires_in = request.session.get("access_token_expires_in", 1800)
+    if refreshed_at is None:
+        request.session["access_token_refreshed_at"] = time.time()
+        request.session["access_token_expires_in"] = expires_in
+        return True
+
+    try:
+        refresh_after = float(refreshed_at) + max(60, int(expires_in) - 120)
+    except (TypeError, ValueError):
+        return refresh_session_token(request)
+
+    if time.time() >= refresh_after:
+        return refresh_session_token(request)
+    return True
 
 
 def auth_required(view_func):
     @wraps(view_func)
     def wrapped(request, *args, **kwargs):
-        if not session_token(request):
+        if not refresh_session_token_if_needed(request):
             return redirect(f"{reverse('dashboard:login')}?next={request.path}")
         return view_func(request, *args, **kwargs)
 
@@ -222,6 +640,13 @@ def render_auth(request, template_name):
     )
 
 
+def token_refresh_context(request):
+    return {
+        "has_refresh_token": bool(request.session.get("refresh_token")),
+        "access_token_expires_in": request.session.get("access_token_expires_in", 1800),
+    }
+
+
 def google_oauth_enabled():
     return bool(
         django_settings.GOOGLE_CLIENT_ID and django_settings.GOOGLE_CLIENT_SECRET
@@ -256,21 +681,86 @@ def exchange_google_code(request, code):
     return response.json()
 
 
-def store_login_session(request, token_payload, fallback_email=""):
+def store_login_session(request, token_payload, fallback_email="", refresh_user=True):
     request.session["access_token"] = token_payload["access_token"]
+    if token_payload.get("refresh_token"):
+        request.session["refresh_token"] = token_payload["refresh_token"]
     request.session["token_type"] = token_payload.get("token_type", "bearer")
-    try:
-        request.session["user"] = backend_api.get_current_user(
-            request.session["access_token"]
-        )
-    except backend_api.BackendAPIError:
-        request.session["user"] = {"email": fallback_email}
+    request.session["access_token_expires_in"] = token_payload.get("expires_in") or 1800
+    request.session["access_token_refreshed_at"] = time.time()
+    request.session["refresh_token_expires_in"] = token_payload.get(
+        "refresh_expires_in"
+    )
+    if refresh_user:
+        try:
+            request.session["user"] = backend_api.get_current_user(
+                request.session["access_token"]
+            )
+        except backend_api.BackendAPIError:
+            request.session["user"] = {"email": fallback_email}
 
 
 def handle_api_error(request, exc):
     if exc.status_code == 401:
+        if refresh_session_token(request):
+            return
         request.session.pop("access_token", None)
+        request.session.pop("refresh_token", None)
         django_messages.error(request, "Your session expired. Please log in again.")
+
+
+SENSITIVE_FIELD_RE = re.compile(
+    r"(api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|authorization|"
+    r"client[_-]?secret|secret|password|passwd|pwd|credential|private[_-]?key)",
+    flags=re.IGNORECASE,
+)
+SECRET_ASSIGNMENT_RE = re.compile(
+    r"(?P<prefix>\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|"
+    r"authorization|client[_-]?secret|secret|password|passwd|pwd|credential|"
+    r"private[_-]?key)\b\s*[:=]\s*)(?P<quote>['\"]?)(?P<value>[^'\"\s,&}]+)",
+    flags=re.IGNORECASE,
+)
+ENV_SECRET_ASSIGNMENT_RE = re.compile(
+    r"(?P<prefix>\b[A-Z0-9_]*(?:API_KEY|TOKEN|SECRET|PASSWORD|PASSWD|PWD|"
+    r"CREDENTIAL|PRIVATE_KEY)\b\s*[:=]\s*)(?P<quote>['\"]?)(?P<value>[^'\"\s,&}]+)"
+)
+QUERY_SECRET_RE = re.compile(
+    r"(?P<prefix>[?&](?:key|api_key|api-key|token|access_token|auth|signature|"
+    r"client_secret)=)(?P<value>[^&\s'\"}]+)",
+    flags=re.IGNORECASE,
+)
+GOOGLE_API_KEY_RE = re.compile(r"\bAIza[0-9A-Za-z_-]{20,}\b")
+
+
+def redact_secrets(value):
+    if isinstance(value, dict):
+        redacted = {}
+        for key, item in value.items():
+            if SENSITIVE_FIELD_RE.search(str(key)):
+                redacted[key] = "[redacted]"
+            else:
+                redacted[key] = redact_secrets(item)
+        return redacted
+
+    if isinstance(value, list):
+        return [redact_secrets(item) for item in value]
+
+    if isinstance(value, tuple):
+        return tuple(redact_secrets(item) for item in value)
+
+    if isinstance(value, str):
+        redacted = QUERY_SECRET_RE.sub(r"\g<prefix>[redacted]", value)
+        redacted = ENV_SECRET_ASSIGNMENT_RE.sub(
+            lambda match: f"{match.group('prefix')}{match.group('quote')}[redacted]",
+            redacted,
+        )
+        redacted = SECRET_ASSIGNMENT_RE.sub(
+            lambda match: f"{match.group('prefix')}{match.group('quote')}[redacted]",
+            redacted,
+        )
+        return GOOGLE_API_KEY_RE.sub("[redacted]", redacted)
+
+    return value
 
 
 def _endpoints_for(area):
@@ -352,24 +842,26 @@ def resolve_project_workflow(token, project_slug, workflow_slug):
 
 
 def find_contract_review_workflow(workflows):
+    return find_workflow_by_name(workflows, CONTRACT_REVIEW_NAME)
+
+
+def find_job_vacancy_workflow(workflows):
+    return find_workflow_by_name(workflows, JOB_VACANCY_NAME)
+
+
+def find_workflow_template(template_key):
     return next(
-        (
-            workflow
-            for workflow in workflows
-            if resource_slug(workflow, "name")
-            == resource_slug({"name": CONTRACT_REVIEW_NAME}, "name")
-        ),
+        (template for template in WORKFLOW_TEMPLATES if template["key"] == template_key),
         None,
     )
 
 
-def find_job_vacancy_workflow(workflows):
+def find_workflow_by_name(workflows, name):
     return next(
         (
             workflow
             for workflow in workflows
-            if resource_slug(workflow, "name")
-            == resource_slug({"name": JOB_VACANCY_NAME}, "name")
+            if resource_slug(workflow, "name") == resource_slug({"name": name}, "name")
         ),
         None,
     )
@@ -463,6 +955,72 @@ def parse_job_vacancy_output(output):
         "cover_letter": "No cover letter returned.",
         "application_note": "No application note returned.",
     }
+
+
+def generic_template_input(template, document):
+    return (
+        f"{template['name']} REQUEST\n\n"
+        f"Document filename: {document.get('filename', 'document')}\n\n"
+        "Process this document using the workflow steps. The final output must be valid "
+        f"JSON with this shape: {json.dumps(template['output_shape'])}.\n\n"
+        "DOCUMENT TEXT\n"
+        f"{document.get('text', '')}"
+    )
+
+
+def resume_screening_input(template, job_description, cv_documents):
+    cv_sections = "\n\n".join(
+        f"CV filename: {cv.get('filename', 'cv')}\n{cv.get('text', '')}"
+        for cv in cv_documents
+    )
+    return (
+        f"{template['name']} REQUEST\n\n"
+        f"Job description filename: {job_description.get('filename', 'job description')}\n\n"
+        "Evaluate all candidate CVs against the job description. The final output must be "
+        f"valid JSON with this shape: {json.dumps(template['output_shape'])}.\n\n"
+        f"JOB DESCRIPTION\n{job_description.get('text', '')}\n\n"
+        f"CANDIDATE CVS\n{cv_sections}"
+    )
+
+
+def parse_generic_template_output(output, output_shape):
+    parsed = parse_json_object(output)
+    result = dict(output_shape)
+    if isinstance(parsed, dict):
+        for key in output_shape:
+            if key in parsed and parsed[key] not in (None, ""):
+                result[key] = parsed[key]
+        return result
+
+    for key, default in output_shape.items():
+        if isinstance(default, str):
+            result[key] = output.strip() or "No output returned."
+            break
+    return result
+
+
+def build_template_result_rows(structured):
+    rows = []
+    for key, value in structured.items():
+        label = key.replace("_", " ").title()
+        if isinstance(value, list):
+            if value and isinstance(value[0], dict):
+                rows.append({"label": label, "type": "list_of_dicts", "items": value})
+            else:
+                rows.append(
+                    {"label": label, "type": "list", "items": [str(item) for item in value]}
+                )
+        elif isinstance(value, dict):
+            rows.append({"label": label, "type": "dict", "items": value})
+        else:
+            rows.append(
+                {
+                    "label": label,
+                    "type": "text",
+                    "value": str(value) if value not in (None, "") else "Not specified",
+                }
+            )
+    return rows
 
 
 def parse_json_object(value):
@@ -661,8 +1219,11 @@ def extract_risk_level(output):
 def summarize_workflow_run(workflow_run, events):
     output = workflow_run.get("output") or ""
     template_type = workflow_template_type(workflow_run, output)
-    if template_type == "job-vacancy":
-        structured = parse_job_vacancy_output(output)
+    template = find_workflow_template(template_type)
+    if template and template.get("output_parser"):
+        structured = template["output_parser"](output)
+    elif template:
+        structured = parse_generic_template_output(output, template["output_shape"])
     else:
         structured = parse_contract_review_output(output)
 
@@ -673,11 +1234,30 @@ def summarize_workflow_run(workflow_run, events):
 
     return {
         "template_type": template_type,
+        "template_name": template["name"] if template else None,
         "output": output,
         "structured": structured,
+        "rows": build_template_result_rows(structured),
+        "input_source": execution_input_source(workflow_run.get("input") or ""),
         "event_counts": event_counts,
         "event_count": len(events),
     }
+
+
+INPUT_SOURCE_LABELS = (
+    "Document filename",
+    "Vacancy link",
+    "CV filename",
+    "Job description filename",
+)
+
+
+def execution_input_source(run_input):
+    for label in INPUT_SOURCE_LABELS:
+        match = re.search(rf"^{re.escape(label)}:\s*(.+)$", run_input, flags=re.MULTILINE)
+        if match and match.group(1).strip():
+            return f"{label}: {match.group(1).strip()}"
+    return None
 
 
 def workflow_template_type(workflow_run, output):
@@ -685,17 +1265,15 @@ def workflow_template_type(workflow_run, output):
     workflow_name = workflow_run.get("workflow_name") or workflow_run.get("name") or ""
     source = f"{workflow_name}\n{run_input}\n{output}".lower()
 
-    if "vacancy helper request" in source or "vacancy helper" in source:
-        return "job-vacancy"
-    if "contract review request" in source or "contract review" in source:
-        return "contract-review"
+    for template in WORKFLOW_TEMPLATES:
+        if template["name"].lower() in source:
+            return template["key"]
 
     parsed = parse_json_object(output)
     if isinstance(parsed, dict):
-        if {"score", "cover_letter", "application_note"} & set(parsed.keys()):
-            return "job-vacancy"
-        if {"risk_level", "key_dates"} & set(parsed.keys()):
-            return "contract-review"
+        for template in WORKFLOW_TEMPLATES:
+            if set(template["output_shape"].keys()) & set(parsed.keys()):
+                return template["key"]
 
     return "contract-review"
 

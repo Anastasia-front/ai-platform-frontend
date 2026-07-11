@@ -7,11 +7,17 @@ from .auth import (
     index,
     login_view,
     logout_view,
+    refresh_session_view,
     register_view,
 )
 from .chats import chat_detail, delete_chat, new_chat, send_chat_message
-from .documents import delete_document, process_document, upload_document
-from .executions import execution_detail, executions
+from .documents import (
+    delete_document,
+    document_status_partial,
+    process_document,
+    upload_document,
+)
+from .executions import execution_detail, execution_status_partial, executions
 from .projects import delete_project, new_project, project_detail, projects
 from .providers import (
     check_provider_health,
@@ -30,7 +36,9 @@ from .workflows import (
     run_contract_review,
     run_job_vacancy,
     run_workflow,
+    run_workflow_template,
     setup_contract_review,
     setup_job_vacancy,
+    setup_workflow_template,
     workflows,
 )
