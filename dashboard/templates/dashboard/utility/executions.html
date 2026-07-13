@@ -26,17 +26,20 @@
     {% if workflow_runs %}
         <div class="execution-list">
             {% for run in workflow_runs %}
-                <a href="{% url 'dashboard:execution_detail' run.id %}">
-                    <strong>Execution #{{ run.id }}</strong>
-                    <span>
-                        {% if run.project %}{{ run.project.name }} · {% endif %}
-                        Workflow #{{ run.workflow_id }} · {{ run.status }}
-                    </span>
-                    {% if run.input_source %}
-                        <span>{{ run.input_source|truncate_chars:80 }}</span>
-                    {% endif %}
-                    <small>{{ run.created_at|human_datetime }}</small>
-                </a>
+                <article class="execution-list-item">
+                    <a class="execution-list-link" href="{% url 'dashboard:execution_detail' run.id %}">
+                        <strong>Execution #{{ run.id }}</strong>
+                        <span>
+                            {% if run.project %}{{ run.project.name }} · {% endif %}
+                            Workflow #{{ run.workflow_id }} · {{ run.status }}
+                        </span>
+                        {% if run.input_source %}
+                            <span>{{ run.input_source|truncate_chars:80 }}</span>
+                        {% endif %}
+                        <small>{{ run.created_at|human_datetime }}</small>
+                    </a>
+                    {% include "dashboard/partials/execution_actions.html" with workflow_run=run %}
+                </article>
             {% endfor %}
         </div>
     {% else %}

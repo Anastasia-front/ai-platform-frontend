@@ -43,14 +43,16 @@
                         hx-target="#messages"
                         hx-swap="innerHTML"
                         data-chat-composer
+                        data-message-stream-url="{% url 'dashboard:stream_chat_message' active_project.slug active_chat.slug %}"
                     >
                         {% csrf_token %}
                         <textarea name="content" rows="1" placeholder="Message the assistant..." required></textarea>
                         <select name="agent_name" class="compact-form-control" aria-label="Agent mode">
                             {% for mode in agent_modes %}
-                                <option value="{{ mode.value }}" {% if mode.value == "assistant" %}selected{% endif %}>{{ mode.label }}</option>
+                                <option value="{{ mode.value }}" {% if mode.value == active_chat.agent_name %}selected{% endif %}>{{ mode.label }}</option>
                             {% endfor %}
                         </select>
+                        <button type="button" class="danger-button chat-stop-button" data-message-stop hidden>Stop</button>
                         <button type="submit" data-loading-label="Sending...">Send</button>
                     </form>
                 {% else %}
@@ -68,9 +70,9 @@
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     <label class="file-picker">
                         <span>Choose file</span>
-                        <input type="file" name="file" required data-file-input>
+                        <input type="file" name="file" required multiple data-file-input>
                     </label>
-                    <p class="selected-file-name" data-file-name hidden></p>
+                    <ul class="selected-file-list" data-file-list hidden></ul>
                     <p class="file-status" data-file-status>No file chosen</p>
                     <button type="submit" data-upload-button data-loading-label="Uploading..." disabled>Upload</button>
                 </form>
@@ -78,19 +80,13 @@
                 {% if documents %}
                     <div class="document-list">
                         {% for document in documents %}
-                            <article class="document-row">
+                            <article class="document-row" data-document-row data-document-id="{{ document.id }}">
                                 <div>
                                     <strong>{{ document.filename }}</strong>
                                     {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
                                 </div>
                                 <div class="document-actions">
-                                    {% if not document.text %}
-                                        <form method="post" action="{% url 'dashboard:process_document' active_project.slug document.id %}" data-loading-form>
-                                            {% csrf_token %}
-                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                            <button type="submit" class="process-button" data-loading-label="{% if document.status == 'uploaded' %}Queuing...{% elif document.status == 'queued' %}Queued...{% elif document.status == 'processing' %}Processing...{% elif document.status == 'indexed' %}Indexing...{% elif document.status == 'failed' %}Retrying...{% else %}Processing...{% endif %}">Process</button>
-                                        </form>
-                                    {% endif %}
+                                    {% include "dashboard/partials/document_actions.html" with project_slug=active_project.slug %}
                                     <form method="post" action="{% url 'dashboard:delete_document' active_project.slug document.id %}">
                                         {% csrf_token %}
                                         <input type="hidden" name="next" value="{{ request.get_full_path }}">

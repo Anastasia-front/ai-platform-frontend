@@ -70,6 +70,7 @@
             <a href="{% url 'dashboard:providers' %}" {% if current_url_name == 'providers' %}class="active"{% endif %}>Providers</a>
             <a href="{% url 'dashboard:workflows' %}" {% if current_url_name == 'workflows' %}class="active"{% endif %}>Workflows</a>
             <a href="{% url 'dashboard:executions' %}" {% if current_url_name == 'executions' or current_url_name == 'execution_detail' %}class="active"{% endif %}>Executions / Logs</a>
+            <a href="{% url 'dashboard:guide' %}" {% if current_url_name == 'guide' %}class="active"{% endif %}>Guideline / Help</a>
             <a href="{% url 'dashboard:settings' %}" {% if current_url_name == 'settings' %}class="active"{% endif %}>Settings</a>
             <a href="{% url 'dashboard:logout' %}">Logout</a>
         </nav>

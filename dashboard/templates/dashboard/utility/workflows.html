@@ -79,17 +79,10 @@
                     <div class="contract-document-readiness">
                         {% for document in project_documents %}
                             {% if not document.text %}
-                                <div>
+                                <div data-document-row data-document-id="{{ document.id }}">
                                     <span>{{ document.filename }} needs text extraction before review.</span>
-                                    {% if document.status in active_document_statuses %}
-                                        {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
-                                    {% else %}
-                                        <form method="post" action="{% url 'dashboard:process_document' workflow_project.slug document.id %}" data-loading-form>
-                                            {% csrf_token %}
-                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                            <button type="submit" class="process-button" data-loading-label="{% if document.status == 'failed' %}Retrying...{% else %}Queuing...{% endif %}">{% if document.status == 'failed' %}Retry{% else %}Process{% endif %}</button>
-                                        </form>
-                                    {% endif %}
+                                    {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
+                                    {% include "dashboard/partials/document_actions.html" with project_slug=workflow_project.slug %}
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -161,17 +154,10 @@
                     <div class="contract-document-readiness">
                         {% for document in project_documents %}
                             {% if not document.text %}
-                                <div>
+                                <div data-document-row data-document-id="{{ document.id }}">
                                     <span>{{ document.filename }} needs text extraction before it can be used as a CV.</span>
-                                    {% if document.status in active_document_statuses %}
-                                        {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
-                                    {% else %}
-                                        <form method="post" action="{% url 'dashboard:process_document' workflow_project.slug document.id %}" data-loading-form>
-                                            {% csrf_token %}
-                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                            <button type="submit" class="process-button" data-loading-label="{% if document.status == 'failed' %}Retrying...{% else %}Queuing...{% endif %}">{% if document.status == 'failed' %}Retry{% else %}Process{% endif %}</button>
-                                        </form>
-                                    {% endif %}
+                                    {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
+                                    {% include "dashboard/partials/document_actions.html" with project_slug=workflow_project.slug %}
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -273,17 +259,10 @@
                     <div class="contract-document-readiness">
                         {% for document in project_documents %}
                             {% if not document.text %}
-                                <div>
+                                <div data-document-row data-document-id="{{ document.id }}">
                                     <span>{{ document.filename }} needs text extraction before it can be used.</span>
-                                    {% if document.status in active_document_statuses %}
-                                        {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
-                                    {% else %}
-                                        <form method="post" action="{% url 'dashboard:process_document' workflow_project.slug document.id %}" data-loading-form>
-                                            {% csrf_token %}
-                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                            <button type="submit" class="process-button" data-loading-label="{% if document.status == 'failed' %}Retrying...{% else %}Queuing...{% endif %}">{% if document.status == 'failed' %}Retry{% else %}Process{% endif %}</button>
-                                        </form>
-                                    {% endif %}
+                                    {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
+                                    {% include "dashboard/partials/document_actions.html" with project_slug=workflow_project.slug %}
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -332,7 +311,7 @@
             <section class="workflow-canvas">
                 {% if active_workflow %}
                     <div class="workflow-toolbar">
-                        <div>
+                        <div class="width-100">
                             <p class="eyebrow">{{ workflow_project.name }}</p>
                             <h2>{{ active_workflow.name }}</h2>
                             <details class="workflow-description-dropdown">

@@ -1,0 +1,162 @@
+{% extends "dashboard/app_base.html" %}
+
+{% block title %}Guideline / Help | AI Platform{% endblock %}
+
+{% block content %}
+<section class="guide-page">
+    <header class="guide-hero">
+        <div>
+            <p class="eyebrow">Guideline / Help</p>
+            <h1>Use the AI Automation Platform</h1>
+            <p>Start with a project, add documents when you need project context, then use chats or workflows to produce answers and structured outputs.</p>
+        </div>
+        <nav class="guide-jump-list" aria-label="Guide sections">
+            <a href="#projects">Projects</a>
+            <a href="#chats">Chats</a>
+            <a href="#documents">Documents</a>
+            <a href="#providers">Providers</a>
+            <a href="#workflows">Workflows</a>
+            <a href="#executions">Executions</a>
+            <a href="#interface">Interface</a>
+            <a href="#flows">Usage flows</a>
+        </nav>
+    </header>
+
+    <div class="guide-grid">
+        <article class="guide-card" id="projects">
+            <span class="eyebrow">Workspace</span>
+            <h2>Projects</h2>
+            <p>A project is the top-level workspace for related chats, uploaded documents, workflows, and workflow executions.</p>
+            <ul>
+                <li>Create projects from <strong>New Project</strong> in the sidebar or Projects page.</li>
+                <li>Open a project from the Projects list in the sidebar.</li>
+                <li>Delete a project from its project page when it is no longer needed.</li>
+            </ul>
+        </article>
+
+        <article class="guide-card" id="chats">
+            <span class="eyebrow">Conversation</span>
+            <h2>Chats</h2>
+            <p>Chats live inside a project. Create them from the sidebar, open them from the project chat list, send messages from the composer, and delete them from the chat workspace.</p>
+            <div class="guide-two-column">
+                <div>
+                    <h3>General chat</h3>
+                    <p>When a project has no processed documents relevant to the question, the assistant answers from the selected LLM and conversation history only.</p>
+                </div>
+                <div>
+                    <h3>Project chat</h3>
+                    <p>When processed project documents are available, the backend retrieves matching document chunks and adds them as RAG context before asking the LLM.</p>
+                </div>
+            </div>
+            <h3>Agent modes</h3>
+            <div class="guide-pill-row">
+                {% for mode in guide_agent_modes %}
+                    <span>{{ mode.label }}</span>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="guide-card" id="documents">
+            <span class="eyebrow">Knowledge</span>
+            <h2>Documents</h2>
+            <p>Documents must be processed before they can provide text for chat retrieval or workflow inputs.</p>
+            <dl class="guide-status-list">
+                <div><dt>uploaded</dt><dd>The file exists, but processing has not completed.</dd></div>
+                <div><dt>queued</dt><dd>A background worker has been asked to process it.</dd></div>
+                <div><dt>processing</dt><dd>Text extraction and embedding work is in progress.</dd></div>
+                <div><dt>indexed</dt><dd>Text and embeddings are ready for chats and workflows.</dd></div>
+                <div><dt>failed</dt><dd>Processing failed. Check the error, then process again or re-upload.</dd></div>
+            </dl>
+            <p>Uploads are queued automatically. The Process action can queue processing again for an existing document when needed.</p>
+        </article>
+
+        <article class="guide-card" id="providers">
+            <span class="eyebrow">AI setup</span>
+            <h2>Providers</h2>
+            <div class="guide-two-column">
+                <div>
+                    <h3>Chat providers</h3>
+                    <p>Control future LLM responses for chats, agents, and workflow steps. Changing the chat default affects new AI calls after the setting is saved.</p>
+                </div>
+                <div>
+                    <h3>Embedding providers</h3>
+                    <p>Control how document vectors are created for retrieval. Provider, model, and dimensions matter for compatibility.</p>
+                </div>
+            </div>
+            <div class="guide-callout">
+                Existing document embeddings belong to the embedding provider/model used when they were created. If you change embedding defaults, rebuild or sync old document embeddings. Newly uploaded documents use the new embedding provider automatically.
+            </div>
+            <p>The Providers page shows active defaults, available providers, saved-key state, health checks, and rebuild/sync tools when supported by the backend.</p>
+        </article>
+
+        <article class="guide-card wide" id="workflows">
+            <span class="eyebrow">Automation</span>
+            <h2>Workflows</h2>
+            <p>A workflow is an ordered set of AI steps. Each step has a name, order, prompt template, and optional dependencies. Dependencies pass previous step outputs into later prompts.</p>
+            <div class="guide-two-column">
+                <div>
+                    <h3>Inputs and outputs</h3>
+                    <p>A run starts with user input or selected document text. Each step produces output; the final run stores raw input, raw output, events, and any structured result the frontend can parse.</p>
+                </div>
+                <div>
+                    <h3>Builder</h3>
+                    <p>Create custom workflows, add steps, edit prompt text, set dependencies, then run the workflow from the Workflows page.</p>
+                </div>
+            </div>
+            <h3>Built-in templates</h3>
+            <div class="guide-template-grid">
+                {% for template in guide_workflow_templates %}
+                    <details class="guide-template-card">
+                        <summary>
+                            <span class="guide-template-summary-content">
+                                <span>{{ template.name }}</span>
+                                <small>{{ template.guide_steps|length }} steps</small>
+                            </span>
+                        </summary>
+                        <p>{{ template.description }}</p>
+                        <ol>
+                            {% for step in template.guide_steps %}
+                                <li>{{ step.name }}</li>
+                            {% endfor %}
+                        </ol>
+                    </details>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="guide-card" id="executions">
+            <span class="eyebrow">Results</span>
+            <h2>Executions</h2>
+            <p>Workflow runs use statuses: <strong>pending</strong>, <strong>running</strong>, <strong>completed</strong>, <strong>failed</strong>, and <strong>paused</strong>.</p>
+            <ul>
+                <li>The Executions page lists workflow runs and keeps active statuses updated.</li>
+                <li>The Execution Details page shows structured output when available.</li>
+                <li>Raw input, raw output, and events are available in expandable sections for debugging.</li>
+                <li>Workflow runs are background jobs, so you can navigate to other pages while a run continues.</li>
+            </ul>
+        </article>
+
+        <article class="guide-card" id="interface">
+            <span class="eyebrow">Interface</span>
+            <h2>Sidebar and expandable sections</h2>
+            <ol>
+                <li>The sidebar can be opened, closed, and resized on desktop. The collapsed state and width are saved in your browser.</li>
+                <li>When the sidebar is closed on desktop, move the pointer to the left edge of the viewport to temporarily reveal it. It remains visible while you interact with it, then hides again after the pointer leaves.</li>
+                <li>Many pages use expandable blocks. When you see an arrow, chevron, disclosure icon, or expand icon, open it to reveal details such as workflow templates, steps, events, logs, raw input, or raw output.</li>
+            </ol>
+        </article>
+
+        <article class="guide-card wide" id="flows">
+            <span class="eyebrow">Recommended flows</span>
+            <h2>Practical paths</h2>
+            <div class="guide-flow-grid">
+                <div><strong>Ask about project documents</strong><span>Upload documents</span><span>Process documents</span><span>Ask questions in project chat</span></div>
+                <div><strong>Change embedding provider</strong><span>Save new embedding defaults</span><span>Rebuild or sync old document embeddings</span><span>Continue working</span></div>
+                <div><strong>Create custom workflow</strong><span>Create workflow</span><span>Configure steps and dependencies</span><span>Run workflow</span><span>Review execution details</span></div>
+                <div><strong>Run built-in template</strong><span>Set up template</span><span>Select required documents or inputs</span><span>Run workflow</span><span>Review result</span></div>
+                <div><strong>Investigate failed execution</strong><span>Open Execution Details</span><span>Check events</span><span>Review raw input and output</span><span>Use logs/debug sections where shown</span></div>
+            </div>
+        </article>
+    </div>
+</section>
+{% endblock %}

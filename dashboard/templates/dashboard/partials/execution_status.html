@@ -8,9 +8,9 @@
     hx-swap="outerHTML"
     {% endif %}
 >{{ workflow_run.status }}</strong>
-{% if workflow_run.status not in active_run_statuses %}
+<!-- {% if workflow_run.status not in active_run_statuses %}
 <a class="muted" href="{% url 'dashboard:execution_detail' run_id=workflow_run.id %}">View full results ↻</a>
-{% endif %}
+{% endif %} -->
 {% if workflow_run.error %}
 <span class="muted document-status-error">{{ workflow_run.error }}</span>
 {% endif %}

@@ -2,6 +2,9 @@
 <span
     id="document-status-{{ document.id }}"
     class="status-badge status-{{ document.status }}"
+    data-document-status
+    data-document-id="{{ document.id }}"
+    data-document-has-text="{% if document.text %}true{% else %}false{% endif %}"
     {% if document.status in active_statuses %}
     hx-get="{% url 'dashboard:document_status_partial' document_id=document.id %}"
     hx-trigger="every 3s"

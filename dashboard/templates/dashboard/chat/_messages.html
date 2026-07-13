@@ -9,19 +9,7 @@
         <article class="message {{ message.role }}">
             <div class="message-role">{{ message.role }}</div>
             <div class="message-bubble">
-                {% if message.role == "assistant" %}
-                    <div class="rich-text">{{ message.content|render_markdown }}</div>
-                {% else %}
-                    <p>{{ message.content|linebreaksbr }}</p>
-                {% endif %}
-                {% if message.sources %}
-                    <div class="sources">
-                        <strong>Sources</strong>
-                        {% for source in message.sources %}
-                            <span>{{ source.document_name }} · {{ source.matches }} matches</span>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+                {% include "dashboard/chat/_message_bubble.html" %}
             </div>
         </article>
     {% endfor %}
