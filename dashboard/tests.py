@@ -235,6 +235,37 @@ class ProjectViewTests(TestCase):
         mock_upload_document.assert_called_once()
         mock_process_document.assert_called_once_with("token-123", 42)
 
+    @patch("dashboard.views.backend_api.process_document")
+    @patch("dashboard.views.backend_api.upload_document")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_upload_document_processes_multiple_files_in_one_request(
+        self,
+        mock_list_projects,
+        mock_upload_document,
+        mock_process_document,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_upload_document.side_effect = [
+            {"id": 42, "filename": "notes.txt"},
+            {"id": 43, "filename": "brief.txt"},
+        ]
+        uploaded_files = [
+            SimpleUploadedFile("notes.txt", b"hello", content_type="text/plain"),
+            SimpleUploadedFile("brief.txt", b"world", content_type="text/plain"),
+        ]
+        next_url = "/projects/research/chats/first-chat/"
+
+        response = self.client.post(
+            reverse("dashboard:upload_document", args=["research"]),
+            {"file": uploaded_files, "next": next_url},
+        )
+
+        self.assertRedirects(response, next_url, fetch_redirect_response=False)
+        self.assertEqual(mock_upload_document.call_count, 2)
+        self.assertEqual(mock_process_document.call_count, 2)
+        mock_process_document.assert_any_call("token-123", 42)
+        mock_process_document.assert_any_call("token-123", 43)
+
     @patch("dashboard.views.backend_api.delete_document")
     @patch("dashboard.views.backend_api.list_projects")
     def test_delete_document_returns_to_current_page(
@@ -301,6 +332,33 @@ class ProjectViewTests(TestCase):
             agent_name="coding",
         )
 
+    @patch("dashboard.views.backend_api.list_project_documents")
+    @patch("dashboard.views.backend_api.list_messages")
+    @patch("dashboard.views.backend_api.list_project_chats")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_chat_composer_selects_active_chat_agent(
+        self,
+        mock_list_projects,
+        mock_list_project_chats,
+        mock_list_messages,
+        mock_list_project_documents,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_list_project_chats.return_value = [
+            {"id": 9, "title": "Build helper", "agent_name": "research"}
+        ]
+        mock_list_messages.return_value = []
+        mock_list_project_documents.return_value = []
+
+        response = self.client.get(
+            reverse("dashboard:chat_detail", args=["research", "build-helper"])
+        )
+
+        self.assertContains(
+            response,
+            '<option value="research" selected>Research Agent</option>',
+        )
+
 
 class MarkdownRenderingTests(TestCase):
     def test_assistant_markdown_renders_as_html(self):
@@ -321,6 +379,13 @@ class MarkdownRenderingTests(TestCase):
         self.assertIn("<h1>Error Handling Workflow</h1>", rendered)
         self.assertIn("<h3>Service Classes</h3>", rendered)
         self.assertIn("<hr>", rendered)
+
+    def test_assistant_markdown_preserves_underscores_in_filenames(self):
+        rendered = render_markdown("- candidate_06_sara.txt\n- `gmail_thread_large.txt`")
+
+        self.assertIn("candidate_06_sara.txt", rendered)
+        self.assertIn("<code>gmail_thread_large.txt</code>", rendered)
+        self.assertNotIn("<em>06</em>", rendered)
 
 
 class ProviderViewTests(TestCase):
@@ -384,6 +449,37 @@ class ProviderViewTests(TestCase):
             base_url="https://api.groq.com/openai/v1",
             api_key="secret-key",
         )
+
+    @patch("dashboard.views.backend_api.list_project_documents")
+    @patch("dashboard.views.backend_api.get_providers")
+    @patch("dashboard.views.backend_api.rebuild_document_embeddings")
+    @patch("dashboard.views.backend_api.get_document")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_provider_page_renders_embedding_result_with_document_name(
+        self,
+        mock_list_projects,
+        mock_get_document,
+        mock_rebuild_document_embeddings,
+        mock_get_providers,
+        mock_list_project_documents,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_get_document.return_value = {"id": 42, "filename": "contract.pdf"}
+        mock_rebuild_document_embeddings.return_value = {
+            "document_id": 42,
+            "status": "queued",
+        }
+        mock_get_providers.return_value = provider_payload()
+        mock_list_project_documents.return_value = []
+
+        response = self.client.post(
+            reverse("dashboard:rebuild_document_embeddings", args=["research", 42]),
+            follow=True,
+        )
+
+        self.assertContains(response, "contract.pdf")
+        self.assertContains(response, "Embedding rebuild queued.")
+        self.assertNotContains(response, "<strong>queued</strong>", html=True)
 
 
 class WorkflowViewTests(TestCase):
@@ -546,7 +642,7 @@ class WorkflowViewTests(TestCase):
     @patch("dashboard.views.backend_api.list_project_documents")
     @patch("dashboard.views.backend_api.list_project_workflows")
     @patch("dashboard.views.backend_api.list_projects")
-    def test_run_contract_review_stays_on_workflows_when_run_is_pending(
+    def test_run_contract_review_redirects_to_execution_detail_when_run_is_pending(
         self,
         mock_list_projects,
         mock_list_project_workflows,
@@ -569,7 +665,7 @@ class WorkflowViewTests(TestCase):
 
         self.assertRedirects(
             response,
-            f"{reverse('dashboard:workflows')}?project=research&workflow=contract-review&template=contract-review",
+            reverse("dashboard:execution_detail", args=[77]),
             fetch_redirect_response=False,
         )
         self.assertNotIn("contract_review_result", self.client.session)
@@ -612,6 +708,49 @@ class WorkflowViewTests(TestCase):
             response,
             "Document filename: sop_operations_manual_for_the_entire_european_operations_team_2026.docx",
         )
+
+    @patch("dashboard.views.backend_api.list_workflow_runs")
+    @patch("dashboard.views.backend_api.list_project_workflows")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_executions_list_renders_stop_for_running_runs(
+        self,
+        mock_list_projects,
+        mock_list_project_workflows,
+        mock_list_workflow_runs,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "sop"}]
+        mock_list_project_workflows.return_value = [
+            {"id": 8, "name": "SOP / Process generator"}
+        ]
+        mock_list_workflow_runs.return_value = [
+            {
+                "id": 13,
+                "workflow_id": 8,
+                "status": "running",
+                "created_at": "2026-07-10T11:45:00Z",
+                "input": "SOP / Process generator REQUEST",
+            }
+        ]
+
+        response = self.client.get(reverse("dashboard:executions"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Stop")
+        self.assertContains(response, reverse("dashboard:cancel_execution", args=[13]))
+
+    @patch("dashboard.views.backend_api.cancel_workflow_run")
+    def test_cancel_execution_posts_to_backend_and_returns_to_next(
+        self, mock_cancel_workflow_run
+    ):
+        next_url = "/executions/"
+
+        response = self.client.post(
+            reverse("dashboard:cancel_execution", args=[13]),
+            {"next": next_url},
+        )
+
+        self.assertRedirects(response, next_url, fetch_redirect_response=False)
+        mock_cancel_workflow_run.assert_called_once_with("token-123", 13)
 
     @patch("dashboard.views.backend_api.list_workflow_run_events")
     @patch("dashboard.views.backend_api.get_workflow_run")
@@ -699,6 +838,39 @@ class WorkflowViewTests(TestCase):
         self.assertContains(response, "Acme")
         self.assertContains(response, "Missing tax id")
         self.assertContains(response, "Document filename: invoice.pdf")
+
+    @patch("dashboard.views.backend_api.list_workflow_run_events")
+    @patch("dashboard.views.backend_api.get_workflow_run")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_execution_detail_renders_all_resume_screening_files(
+        self, mock_list_projects, mock_get_workflow_run, mock_list_events
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_get_workflow_run.return_value = {
+            "id": 80,
+            "workflow_id": 11,
+            "workflow_name": "Resume screening",
+            "status": "completed",
+            "created_at": "2026-07-01T00:00:00Z",
+            "input": (
+                "Resume screening REQUEST\n\n"
+                "Job description filename: senior-python-role.txt\n\n"
+                "CANDIDATE CVS\n"
+                "CV filename: candidate_01_artem.txt\n...\n\n"
+                "CV filename: cv_02.txt\n...\n\n"
+                "CV filename: cv_03.txt\n..."
+            ),
+            "output": '{"score":88,"recommendation":"Interview candidate 1"}',
+        }
+        mock_list_events.return_value = []
+
+        response = self.client.get(reverse("dashboard:execution_detail", args=[80]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Job description filename:")
+        self.assertContains(response, "senior-python-role.txt")
+        self.assertContains(response, "CV filename:")
+        self.assertContains(response, "candidate_01_artem.txt, cv_02.txt, cv_03.txt")
 
     @patch("dashboard.views.backend_api.list_workflow_run_events")
     @patch("dashboard.views.backend_api.get_workflow_run")
@@ -916,6 +1088,36 @@ class WorkflowViewTests(TestCase):
         self.assertIn("Vendor", row_labels)
         self.assertIn("Warnings", row_labels)
 
+    def test_execution_summary_collects_repeated_input_sources(self):
+        summary = summarize_workflow_run(
+            {
+                "input": (
+                    "Resume screening REQUEST\n"
+                    "Job description filename: job.txt\n"
+                    "CV filename: one.txt\n"
+                    "CV filename: two.txt"
+                ),
+                "output": "{}",
+            },
+            [],
+        )
+
+        self.assertEqual(
+            summary["input_sources"],
+            [
+                {
+                    "label": "Job description filename",
+                    "value": "job.txt",
+                    "values": ["job.txt"],
+                },
+                {
+                    "label": "CV filename",
+                    "value": "one.txt, two.txt",
+                    "values": ["one.txt", "two.txt"],
+                },
+            ],
+        )
+
     def test_execution_summary_returns_no_input_source_when_unlabeled(self):
         summary = summarize_workflow_run(
             {"input": "Just some free-form text.", "output": "{}"}, []
@@ -1038,14 +1240,13 @@ class BackgroundJobPollingTests(TestCase):
     @patch("dashboard.views.backend_api.run_workflow")
     @patch("dashboard.views.backend_api.list_project_workflows")
     @patch("dashboard.views.backend_api.list_projects")
-    def test_run_workflow_returns_to_workflow_page_while_pending(
+    def test_run_workflow_redirects_to_execution_detail_while_pending(
         self,
         mock_list_projects,
         mock_list_project_workflows,
         mock_run_workflow,
     ):
-        """The view must not show the execution detail page for a queued
-        run because the detail view has no useful output/events yet."""
+        """Queued runs should open the execution page so the user can stop them."""
         mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
         mock_list_project_workflows.return_value = [
             {"id": 3, "name": "Order Flow", "status": "running"}
@@ -1064,7 +1265,7 @@ class BackgroundJobPollingTests(TestCase):
 
         self.assertRedirects(
             response,
-            f"{reverse('dashboard:workflows')}?project=research&workflow=order-flow",
+            reverse("dashboard:execution_detail", args=[90]),
             fetch_redirect_response=False,
         )
 

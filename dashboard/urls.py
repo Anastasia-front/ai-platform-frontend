@@ -33,6 +33,11 @@ urlpatterns = [
         name='send_chat_message',
     ),
     path(
+        'projects/<slug:project_slug>/chats/<slug:chat_slug>/messages/stream/',
+        views.stream_chat_message,
+        name='stream_chat_message',
+    ),
+    path(
         'projects/<slug:project_slug>/documents/upload/',
         views.upload_document,
         name='upload_document',
@@ -46,6 +51,16 @@ urlpatterns = [
         'projects/<slug:project_slug>/documents/<int:document_id>/process/',
         views.process_document,
         name='process_document',
+    ),
+    path(
+        'projects/<slug:project_slug>/documents/<int:document_id>/process/cancel/',
+        views.cancel_document_processing,
+        name='cancel_document_processing',
+    ),
+    path(
+        'projects/<slug:project_slug>/documents/<int:document_id>/process/retry/',
+        views.retry_document_processing,
+        name='retry_document_processing',
     ),
     path(
         'documents/<int:document_id>/status/',
@@ -128,10 +143,24 @@ urlpatterns = [
     ),
     path('executions/', views.executions, name='executions'),
     path('executions/<int:run_id>/', views.execution_detail, name='execution_detail'),
+    path('executions/<int:run_id>/cancel/', views.cancel_execution, name='cancel_execution'),
+    path('executions/<int:run_id>/resume/', views.resume_execution, name='resume_execution'),
+    path('executions/<int:run_id>/retry/', views.retry_execution, name='retry_execution'),
+    path(
+        'providers/projects/<slug:project_slug>/embeddings/<slug:action>/',
+        views.control_project_embeddings,
+        name='control_project_embeddings',
+    ),
+    path(
+        'providers/projects/<slug:project_slug>/documents/<int:document_id>/embeddings/<slug:action>/',
+        views.control_document_embeddings,
+        name='control_document_embeddings',
+    ),
     path(
         'executions/<int:run_id>/status/',
         views.execution_status_partial,
         name='execution_status_partial',
     ),
+    path('guide/', views.guide, name='guide'),
     path('settings/', views.settings_function, name='settings'),
 ]
