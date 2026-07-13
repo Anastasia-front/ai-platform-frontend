@@ -10,17 +10,35 @@ from .auth import (
     refresh_session_view,
     register_view,
 )
-from .chats import chat_detail, delete_chat, new_chat, send_chat_message
+from .chats import (
+    chat_detail,
+    delete_chat,
+    new_chat,
+    send_chat_message,
+    stream_chat_message,
+)
 from .documents import (
+    cancel_document_processing,
     delete_document,
     document_status_partial,
     process_document,
+    retry_document_processing,
     upload_document,
 )
-from .executions import execution_detail, execution_status_partial, executions
+from .executions import (
+    cancel_execution,
+    execution_detail,
+    execution_status_partial,
+    executions,
+    resume_execution,
+    retry_execution,
+)
+from .guide import guide
 from .projects import delete_project, new_project, project_detail, projects
 from .providers import (
     check_provider_health,
+    control_document_embeddings,
+    control_project_embeddings,
     providers,
     rebuild_document_embeddings,
     sync_embeddings,

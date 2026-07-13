@@ -31,27 +31,21 @@ from .utils import (
 )
 
 ACTIVE_RUN_STATUSES = {"pending", "running"}
-ACTIVE_DOCUMENT_STATUSES = {"queued", "processing"}
+ACTIVE_DOCUMENT_STATUSES = {"queued", "processing", "cancelling"}
 
 
 def _redirect_after_workflow_run(request, project, workflow, template_key, run_result):
     run_id = run_result.get("id")
-    run_status = run_result.get("status")
-
-    if run_id and run_status == "completed":
-        return redirect("dashboard:execution_detail", run_id=run_id)
 
     if run_id:
         django_messages.success(
             request,
-            (
-                "Workflow queued. Results will be available in executions "
-                f"when run #{run_id} completes."
-            ),
+            f"Workflow run #{run_id} started.",
         )
-    else:
-        request.session["workflow_run_result"] = run_result
-        django_messages.success(request, "Workflow started.")
+        return redirect("dashboard:execution_detail", run_id=run_id)
+
+    request.session["workflow_run_result"] = run_result
+    django_messages.success(request, "Workflow started.")
 
     if template_key:
         request.session["open_workflow_template"] = template_key

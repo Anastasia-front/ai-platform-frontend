@@ -1,5 +1,9 @@
+import json
+
 from django.contrib import messages as django_messages
+from django.http import StreamingHttpResponse
 from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 
 from ..services import backend_api
@@ -160,3 +164,100 @@ def send_chat_message(request, project_slug, chat_slug):
         "dashboard:chat_detail", project_slug=project_slug, chat_slug=chat_slug
     )
 
+
+@auth_required
+@require_POST
+def stream_chat_message(request, project_slug, chat_slug):
+    content = request.POST.get("content", "").strip()
+    agent_name = request.POST.get("agent_name", "assistant")
+    if agent_name not in {mode["value"] for mode in AGENT_MODES}:
+        agent_name = "assistant"
+    token = session_token(request)
+
+    project, project_error = resolve_project(token, project_slug)
+    if project_error:
+        return StreamingHttpResponse(
+            f"event: failed\ndata: {json.dumps({'event': 'failed', 'message': project_error})}\n\n",
+            content_type="text/event-stream",
+            status=404,
+        )
+
+    chat, chat_error = resolve_chat(token, project["id"], chat_slug)
+    if chat_error:
+        return StreamingHttpResponse(
+            f"event: failed\ndata: {json.dumps({'event': 'failed', 'message': chat_error})}\n\n",
+            content_type="text/event-stream",
+            status=404,
+        )
+
+    if not content:
+        return StreamingHttpResponse(
+            'event: failed\ndata: {"event":"failed","message":"Message cannot be empty."}\n\n',
+            content_type="text/event-stream",
+            status=400,
+        )
+
+    try:
+        upstream = backend_api.stream_message(token, chat["id"], content, agent_name)
+    except backend_api.BackendAPIError as exc:
+        return StreamingHttpResponse(
+            f"event: failed\ndata: {json.dumps({'event': 'failed', 'message': exc.message})}\n\n",
+            content_type="text/event-stream",
+            status=exc.status_code or 502,
+        )
+
+    def stream():
+        buffer = ""
+        with upstream:
+            for chunk in upstream.iter_content(chunk_size=1):
+                if chunk:
+                    text = chunk.decode("utf-8", errors="replace")
+                    buffer += text
+
+                    while "\n\n" in buffer:
+                        frame, buffer = buffer.split("\n\n", 1)
+                        yield _with_rendered_message_html(
+                            frame,
+                            token=token,
+                            chat_id=chat["id"],
+                            active_project=with_slug(project, "name"),
+                            active_chat=with_slug(chat, "title"),
+                        )
+
+            if buffer:
+                yield buffer
+
+    response = StreamingHttpResponse(stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+def _with_rendered_message_html(frame, *, token, chat_id, active_project=None, active_chat=None):
+    if not frame.startswith("event: completed"):
+        return f"{frame}\n\n"
+
+    event_name = "completed"
+    data_lines = []
+    for line in frame.splitlines():
+        if line.startswith("event:"):
+            event_name = line.removeprefix("event:").strip()
+        elif line.startswith("data:"):
+            data_lines.append(line.removeprefix("data:").strip())
+
+    try:
+        payload = json.loads("\n".join(data_lines))
+        message_id = payload.get("assistant_message_id")
+        if message_id:
+            message = backend_api.get_message(token, chat_id, message_id)
+            payload["rendered_html"] = render_to_string(
+                "dashboard/chat/_message_bubble.html",
+                {
+                    "message": message,
+                    "active_project": active_project,
+                    "active_chat": active_chat,
+                },
+            )
+        return f"event: {event_name}\ndata: {json.dumps(payload)}\n\n"
+    except (ValueError, backend_api.BackendAPIError):
+        return f"{frame}\n\n"

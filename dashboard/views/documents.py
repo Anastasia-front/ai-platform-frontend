@@ -15,7 +15,7 @@ from .utils import (
 
 # Statuses for which the frontend should keep polling for an updated
 # status; anything else (indexed/failed) is terminal.
-ACTIVE_DOCUMENT_STATUSES = {"queued", "processing"}
+ACTIVE_DOCUMENT_STATUSES = {"queued", "processing", "cancelling"}
 
 @auth_required
 @require_POST
@@ -27,15 +27,28 @@ def upload_document(request, project_slug):
         django_messages.error(request, project_error)
         return redirect(next_url or "dashboard:projects")
 
-    uploaded_file = request.FILES.get("file")
-    if not uploaded_file:
-        django_messages.error(request, "Choose a document to upload.")
+    uploaded_files = request.FILES.getlist("file")
+    if not uploaded_files:
+        django_messages.error(request, "Choose at least one document to upload.")
     else:
+        uploaded_count = 0
         try:
-            document = backend_api.upload_document(token, project["id"], uploaded_file)
-            backend_api.process_document(token, document["id"])
+            for uploaded_file in uploaded_files:
+                document = backend_api.upload_document(
+                    token,
+                    project["id"],
+                    uploaded_file,
+                )
+                backend_api.process_document(token, document["id"])
+                uploaded_count += 1
+
             django_messages.success(
-                request, "Document uploaded and queued for processing."
+                request,
+                (
+                    "Document uploaded and queued for processing."
+                    if uploaded_count == 1
+                    else f"{uploaded_count} documents uploaded and queued for processing."
+                ),
             )
         except backend_api.BackendAPIError as exc:
             handle_api_error(request, exc)
@@ -103,6 +116,56 @@ def process_document(request, project_slug, document_id):
 
 
 @auth_required
+@require_POST
+def cancel_document_processing(request, project_slug, document_id):
+    next_url = safe_next_url(request)
+    project, project_error = resolve_project(session_token(request), project_slug)
+    if project_error:
+        django_messages.error(request, project_error)
+        return redirect(next_url or "dashboard:projects")
+
+    try:
+        backend_api.cancel_document_processing(session_token(request), document_id)
+        django_messages.success(request, "Document processing stopped.")
+    except backend_api.BackendAPIError as exc:
+        handle_api_error(request, exc)
+        django_messages.error(request, exc.message)
+
+    return redirect(
+        next_url
+        or reverse(
+            "dashboard:project_detail",
+            kwargs={"project_slug": resource_slug(project, "name")},
+        )
+    )
+
+
+@auth_required
+@require_POST
+def retry_document_processing(request, project_slug, document_id):
+    next_url = safe_next_url(request)
+    project, project_error = resolve_project(session_token(request), project_slug)
+    if project_error:
+        django_messages.error(request, project_error)
+        return redirect(next_url or "dashboard:projects")
+
+    try:
+        backend_api.retry_document_processing(session_token(request), document_id)
+        django_messages.success(request, "Document processing retry queued.")
+    except backend_api.BackendAPIError as exc:
+        handle_api_error(request, exc)
+        django_messages.error(request, exc.message)
+
+    return redirect(
+        next_url
+        or reverse(
+            "dashboard:project_detail",
+            kwargs={"project_slug": resource_slug(project, "name")},
+        )
+    )
+
+
+@auth_required
 def document_status_partial(request, document_id):
     """HTMX polling target: returns just the status badge fragment for a
     single document. Navigation/reload never affects the Celery worker --
@@ -121,4 +184,3 @@ def document_status_partial(request, document_id):
         "dashboard/partials/document_status.html",
         {"document": document, "active_statuses": ACTIVE_DOCUMENT_STATUSES},
     )
-

@@ -1,4 +1,6 @@
-from django.shortcuts import render
+from django.contrib import messages as django_messages
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from ..services import backend_api
 from .utils import (
@@ -41,6 +43,7 @@ def executions(request):
                 "workflow_runs": workflow_runs,
                 "execution_project_tabs": context.get("projects", []),
                 "active_execution_project": active_project,
+                "active_run_statuses": ACTIVE_RUN_STATUSES,
             }
         )
     except backend_api.BackendAPIError as exc:
@@ -53,6 +56,58 @@ def executions(request):
 
 
 ACTIVE_RUN_STATUSES = {"pending", "running"}
+
+
+@auth_required
+@require_POST
+def cancel_execution(request, run_id):
+    try:
+        backend_api.cancel_workflow_run(session_token(request), run_id)
+        django_messages.success(request, f"Execution #{run_id} stopped.")
+    except backend_api.BackendAPIError as exc:
+        handle_api_error(request, exc)
+        django_messages.error(request, exc.message)
+
+    next_url = request.POST.get("next", "")
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect("dashboard:execution_detail", run_id=run_id)
+
+
+@auth_required
+@require_POST
+def resume_execution(request, run_id):
+    try:
+        backend_api.resume_workflow_run(session_token(request), run_id)
+        django_messages.success(request, f"Execution #{run_id} resumed.")
+    except backend_api.BackendAPIError as exc:
+        handle_api_error(request, exc)
+        django_messages.error(request, exc.message)
+
+    next_url = request.POST.get("next", "")
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect("dashboard:execution_detail", run_id=run_id)
+
+
+@auth_required
+@require_POST
+def retry_execution(request, run_id):
+    try:
+        result = backend_api.retry_workflow_run(session_token(request), run_id)
+        django_messages.success(request, f"Execution #{run_id} retry queued.")
+        next_url = request.POST.get("next", "")
+        if next_url.startswith("/") and "executions" in next_url:
+            return redirect(next_url)
+        return redirect("dashboard:execution_detail", run_id=result.get("id", run_id))
+    except backend_api.BackendAPIError as exc:
+        handle_api_error(request, exc)
+        django_messages.error(request, exc.message)
+
+    next_url = request.POST.get("next", "")
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect("dashboard:execution_detail", run_id=run_id)
 
 
 @auth_required

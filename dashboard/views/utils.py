@@ -78,9 +78,10 @@ MAIN_ENDPOINTS = [
 ]
 
 AGENT_MODES = [
-    {"value": "assistant", "label": "Assistant"},
-    {"value": "coding", "label": "Coding"},
-    {"value": "research", "label": "Research"},
+    {"value": "assistant", "label": "Chat Assistant"},
+    {"value": "project", "label": "Project Assistant"},
+    {"value": "research", "label": "Research Agent"},
+    # {"value": "coding", "label": "Coding Agent"},
 ]
 
 CONTRACT_REVIEW_NAME = "Contract review"
@@ -1239,6 +1240,7 @@ def summarize_workflow_run(workflow_run, events):
         "structured": structured,
         "rows": build_template_result_rows(structured),
         "input_source": execution_input_source(workflow_run.get("input") or ""),
+        "input_sources": execution_input_sources(workflow_run.get("input") or ""),
         "event_counts": event_counts,
         "event_count": len(events),
     }
@@ -1246,17 +1248,40 @@ def summarize_workflow_run(workflow_run, events):
 
 INPUT_SOURCE_LABELS = (
     "Document filename",
+    "Job description filename",
     "Vacancy link",
     "CV filename",
-    "Job description filename",
 )
 
 
-def execution_input_source(run_input):
+def execution_input_sources(run_input):
+    sources = []
     for label in INPUT_SOURCE_LABELS:
-        match = re.search(rf"^{re.escape(label)}:\s*(.+)$", run_input, flags=re.MULTILINE)
-        if match and match.group(1).strip():
-            return f"{label}: {match.group(1).strip()}"
+        values = [
+            match.strip()
+            for match in re.findall(
+                rf"^{re.escape(label)}:\s*(.+)$",
+                run_input,
+                flags=re.MULTILINE,
+            )
+            if match.strip()
+        ]
+        if values:
+            sources.append(
+                {
+                    "label": label,
+                    "value": ", ".join(values),
+                    "values": values,
+                }
+            )
+    return sources
+
+
+def execution_input_source(run_input):
+    sources = execution_input_sources(run_input)
+    if sources:
+        first = sources[0]
+        return f"{first['label']}: {first['value']}"
     return None
 
 

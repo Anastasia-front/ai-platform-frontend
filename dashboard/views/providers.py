@@ -20,8 +20,11 @@ from .utils import (
 def providers(request):
     token = session_token(request)
     context = app_context(request, endpoints=_endpoints_for("Providers"))
+    request.session.pop("embedding_tool_result", None)
     active_project = None
     documents = []
+    active_embedding_document = None
+    active_embedding_statuses = {"queued", "processing", "cancelling"}
     project_slug = request.GET.get("project") or (
         context["projects"][0]["slug"] if context["projects"] else ""
     )
@@ -40,6 +43,15 @@ def providers(request):
             active_project = with_slug(project, "name")
             try:
                 documents = backend_api.list_project_documents(token, project["id"])
+                active_embedding_document = next(
+                    (
+                        document
+                        for document in documents
+                        if document.get("embedding_status")
+                        in active_embedding_statuses
+                    ),
+                    None,
+                )
             except backend_api.BackendAPIError as exc:
                 handle_api_error(request, exc)
                 context["provider_project_error"] = exc.message
@@ -49,10 +61,11 @@ def providers(request):
             "active_project_slug": project_slug,
             "provider_project": active_project,
             "provider_documents": documents,
+            "active_embedding_document": active_embedding_document,
+            "active_embedding_statuses": active_embedding_statuses,
             "provider_health_result": request.session.pop(
                 "provider_health_result", None
             ),
-            "embedding_tool_result": request.session.pop("embedding_tool_result", None),
         }
     )
     return render(request, "dashboard/utility/providers.html", context)
@@ -144,11 +157,14 @@ def sync_embeddings(request, project_slug):
         return redirect("dashboard:providers")
 
     try:
-        request.session["embedding_tool_result"] = backend_api.sync_project_embeddings(
+        result = backend_api.sync_project_embeddings(
             token,
             project["id"],
         )
-        django_messages.success(request, "Project embeddings synced.")
+        result["display_name"] = project["name"]
+        result["result_message"] = "Project embedding sync queued."
+        request.session["embedding_tool_result"] = result
+        django_messages.success(request, "Project embedding sync queued.")
     except backend_api.BackendAPIError as exc:
         handle_api_error(request, exc)
         django_messages.error(request, exc.message)
@@ -168,13 +184,15 @@ def rebuild_document_embeddings(request, project_slug, document_id):
         return redirect("dashboard:providers")
 
     try:
-        request.session["embedding_tool_result"] = (
-            backend_api.rebuild_document_embeddings(
-                token,
-                document_id,
-            )
+        document = backend_api.get_document(token, document_id)
+        result = backend_api.rebuild_document_embeddings(
+            token,
+            document_id,
         )
-        django_messages.success(request, "Document embeddings rebuilt.")
+        result["display_name"] = document.get("filename") or f"Document #{document_id}"
+        result["result_message"] = "Embedding rebuild queued."
+        request.session["embedding_tool_result"] = result
+        django_messages.success(request, "Embedding rebuild queued.")
     except backend_api.BackendAPIError as exc:
         handle_api_error(request, exc)
         django_messages.error(request, exc.message)
@@ -183,3 +201,69 @@ def rebuild_document_embeddings(request, project_slug, document_id):
         f"{reverse('dashboard:providers')}?project={resource_slug(project, 'name')}"
     )
 
+
+@auth_required
+@require_POST
+def control_project_embeddings(request, project_slug, action):
+    token = session_token(request)
+    project, project_error = resolve_project(token, project_slug)
+    if project_error:
+        django_messages.error(request, project_error)
+        return redirect("dashboard:providers")
+
+    actions = {
+        "cancel": backend_api.cancel_project_embedding_sync,
+        "resume": backend_api.resume_project_embedding_sync,
+        "retry": backend_api.retry_project_embedding_sync,
+    }
+    handler = actions.get(action)
+    if handler is None:
+        django_messages.error(request, "Unsupported embedding action.")
+    else:
+        try:
+            result = handler(token, project["id"])
+            result["display_name"] = project["name"]
+            result["result_message"] = f"Project embedding {action} queued."
+            request.session["embedding_tool_result"] = result
+            django_messages.success(request, f"Project embedding {action} requested.")
+        except backend_api.BackendAPIError as exc:
+            handle_api_error(request, exc)
+            django_messages.error(request, exc.message)
+
+    return redirect(
+        f"{reverse('dashboard:providers')}?project={resource_slug(project, 'name')}"
+    )
+
+
+@auth_required
+@require_POST
+def control_document_embeddings(request, project_slug, document_id, action):
+    token = session_token(request)
+    project, project_error = resolve_project(token, project_slug)
+    if project_error:
+        django_messages.error(request, project_error)
+        return redirect("dashboard:providers")
+
+    actions = {
+        "cancel": backend_api.cancel_document_embedding_rebuild,
+        "resume": backend_api.resume_document_embedding_rebuild,
+        "retry": backend_api.retry_document_embedding_rebuild,
+    }
+    handler = actions.get(action)
+    if handler is None:
+        django_messages.error(request, "Unsupported embedding action.")
+    else:
+        try:
+            document = backend_api.get_document(token, document_id)
+            result = handler(token, document_id)
+            result["display_name"] = document.get("filename") or f"Document #{document_id}"
+            result["result_message"] = f"Document embedding {action} queued."
+            request.session["embedding_tool_result"] = result
+            django_messages.success(request, f"Document embedding {action} requested.")
+        except backend_api.BackendAPIError as exc:
+            handle_api_error(request, exc)
+            django_messages.error(request, exc.message)
+
+    return redirect(
+        f"{reverse('dashboard:providers')}?project={resource_slug(project, 'name')}"
+    )

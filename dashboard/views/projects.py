@@ -63,7 +63,7 @@ def project_detail(request, project_slug):
             "title",
         )
         context["documents"] = backend_api.list_project_documents(token, project["id"])
-        context["active_document_statuses"] = {"queued", "processing"}
+        context["active_document_statuses"] = {"queued", "processing", "cancelling"}
     except backend_api.BackendAPIError as exc:
         handle_api_error(request, exc)
         context["page_error"] = exc.message
@@ -88,5 +88,4 @@ def delete_project(request, project_slug):
         django_messages.error(request, exc.message)
 
     return redirect("dashboard:projects")
-
 
