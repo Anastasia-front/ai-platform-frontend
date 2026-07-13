@@ -1,10 +1,50 @@
 import html
 import re
+from datetime import date, datetime
 
 from django import template
+from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.safestring import mark_safe
 
 register = template.Library()
+
+
+@register.filter
+def human_datetime(value):
+    if not value:
+        return ''
+
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, date):
+        parsed = datetime.combine(value, datetime.min.time())
+    else:
+        value = str(value).strip()
+        parsed = parse_datetime(value)
+        if parsed is None:
+            parsed_date = parse_date(value)
+            if parsed_date is None:
+                return value
+            parsed = datetime.combine(parsed_date, datetime.min.time())
+
+    return parsed.strftime('%d/%m/%Y - %H:%M')
+
+
+@register.filter
+def truncate_chars(value, max_length):
+    if not value:
+        return ''
+
+    value = str(value)
+    try:
+        max_length = int(max_length)
+    except (TypeError, ValueError):
+        return value
+
+    if max_length <= 3 or len(value) <= max_length:
+        return value
+
+    return f'{value[:max_length - 3]}...'
 
 
 @register.filter
@@ -133,7 +173,7 @@ def _inline(text):
     text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
     text = re.sub(r'__([^_]+)__', r'<u>\1</u>', text)
     text = re.sub(r'\*([^*]+)\*', r'<em>\1</em>', text)
-    text = re.sub(r'_([^_]+)_', r'<em>\1</em>', text)
+    text = re.sub(r'(?<!\w)_([^_\n]+)_(?!\w)', r'<em>\1</em>', text)
 
     for index, segment in enumerate(code_segments):
         text = text.replace(f'@@CODE{index}@@', segment)
