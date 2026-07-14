@@ -317,7 +317,7 @@ class ProjectViewTests(TestCase):
 
         response = self.client.post(
             reverse("dashboard:send_chat_message", args=["research", "build-helper"]),
-            {"content": "Explain this", "agent_name": "coding"},
+            {"content": "Explain this", "agent_name": "workspace"},
         )
 
         self.assertRedirects(
@@ -329,7 +329,7 @@ class ProjectViewTests(TestCase):
             "token-123",
             9,
             "Explain this",
-            agent_name="coding",
+            agent_name="workspace",
         )
 
     @patch("dashboard.views.backend_api.list_project_documents")
@@ -358,6 +358,34 @@ class ProjectViewTests(TestCase):
             response,
             '<option value="research" selected>Research Agent</option>',
         )
+
+    @patch("dashboard.views.backend_api.list_project_documents")
+    @patch("dashboard.views.backend_api.list_messages")
+    @patch("dashboard.views.backend_api.list_project_chats")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_legacy_coding_chat_selects_workspace_agent(
+        self,
+        mock_list_projects,
+        mock_list_project_chats,
+        mock_list_messages,
+        mock_list_project_documents,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_list_project_chats.return_value = [
+            {"id": 9, "title": "Build helper", "agent_name": "coding"}
+        ]
+        mock_list_messages.return_value = []
+        mock_list_project_documents.return_value = []
+
+        response = self.client.get(
+            reverse("dashboard:chat_detail", args=["research", "build-helper"])
+        )
+
+        self.assertContains(
+            response,
+            '<option value="workspace" selected>Workspace Agent</option>',
+        )
+        self.assertNotContains(response, "Coding Agent")
 
 
 class MarkdownRenderingTests(TestCase):
@@ -420,6 +448,74 @@ class ProviderViewTests(TestCase):
         self.assertContains(response, 'data-loading-form')
         self.assertContains(response, 'data-loading-label="Checking..."', count=3)
         self.assertContains(response, 'data-loading-label="Syncing..."')
+
+    @patch("dashboard.views.backend_api.list_project_documents")
+    @patch("dashboard.views.backend_api.get_providers")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_provider_page_shows_document_embedding_metadata_and_rebuild_state(
+        self,
+        mock_list_projects,
+        mock_get_providers,
+        mock_list_project_documents,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_get_providers.return_value = provider_payload()
+        mock_list_project_documents.return_value = [
+            {
+                "id": 1,
+                "filename": "current.pdf",
+                "status": "indexed",
+                "text": "ready",
+                "embedding_status": "completed",
+                "embedding_provider": "ollama",
+                "embedding_model": "nomic-embed-text",
+                "embedding_dimensions": 768,
+                "embeddings_updated_at": "2026-07-13T21:10:00Z",
+            },
+            {
+                "id": 2,
+                "filename": "old-model.pdf",
+                "status": "indexed",
+                "text": "ready",
+                "embedding_status": "completed",
+                "embedding_provider": "ollama",
+                "embedding_model": "old-embed-model",
+                "embedding_dimensions": 768,
+                "embeddings_updated_at": "2026-07-12T09:00:00Z",
+            },
+            {
+                "id": 3,
+                "filename": "legacy.pdf",
+                "status": "indexed",
+                "text": "ready",
+                "embedding_status": "completed",
+                "embedding_provider": None,
+                "embedding_model": None,
+                "embedding_dimensions": None,
+                "embeddings_updated_at": None,
+            },
+            {
+                "id": 4,
+                "filename": "failed.pdf",
+                "status": "failed",
+                "text": None,
+                "embedding_status": "failed",
+            },
+        ]
+
+        response = self.client.get(reverse("dashboard:providers"))
+
+        self.assertContains(response, "current.pdf")
+        self.assertContains(response, "Embeddings: ollama / nomic-embed-text")
+        self.assertContains(response, "Dimensions: 768")
+        self.assertContains(response, "Current provider")
+        self.assertContains(response, "old-model.pdf")
+        self.assertContains(response, "Rebuild recommended")
+        self.assertContains(response, "legacy.pdf")
+        self.assertContains(response, "Provider unknown")
+        self.assertContains(response, "Provider unknown — rebuild recommended")
+        self.assertContains(response, "failed.pdf")
+        self.assertContains(response, "Embedding failed")
 
     @patch("dashboard.views.backend_api.update_chat_provider_defaults")
     def test_update_chat_provider_saves_defaults(
