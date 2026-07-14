@@ -16,6 +16,58 @@ from .utils import (
     with_slug,
 )
 
+
+def _embedding_rebuild_state(document, current_embeddings):
+    status = document.get("embedding_status")
+    current_provider = current_embeddings.get("provider")
+    current_model = current_embeddings.get("model")
+    current_dimensions = current_embeddings.get("dimensions")
+    stored_provider = document.get("embedding_provider")
+    stored_model = document.get("embedding_model")
+    stored_dimensions = document.get("embedding_dimensions")
+
+    if status in {"queued", "processing", "cancelling"}:
+        return {"label": "Embedding in progress", "tone": "live"}
+
+    if status == "failed":
+        return {"label": "Embedding failed", "tone": "warning"}
+
+    if status == "cancelled":
+        return {"label": "No embeddings", "tone": "warning"}
+
+    if status != "completed":
+        return {"label": "No embeddings", "tone": "warning"}
+
+    if not stored_provider or not stored_model or stored_dimensions is None:
+        return {
+            "label": "Provider unknown — rebuild recommended",
+            "tone": "warning",
+        }
+
+    if (
+        stored_provider == current_provider
+        and stored_model == current_model
+        and stored_dimensions == current_dimensions
+    ):
+        return {"label": "Current provider", "tone": "success"}
+
+    return {"label": "Rebuild recommended", "tone": "warning"}
+
+
+def _with_embedding_rebuild_state(documents, provider_data):
+    current_embeddings = (provider_data or {}).get("current", {}).get("embeddings", {})
+    return [
+        {
+            **document,
+            "embedding_rebuild_state": _embedding_rebuild_state(
+                document,
+                current_embeddings,
+            ),
+        }
+        for document in documents
+    ]
+
+
 @auth_required
 def providers(request):
     token = session_token(request)
@@ -42,7 +94,10 @@ def providers(request):
         else:
             active_project = with_slug(project, "name")
             try:
-                documents = backend_api.list_project_documents(token, project["id"])
+                documents = _with_embedding_rebuild_state(
+                    backend_api.list_project_documents(token, project["id"]),
+                    context.get("provider_data"),
+                )
                 active_embedding_document = next(
                     (
                         document

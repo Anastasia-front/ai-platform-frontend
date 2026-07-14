@@ -13,6 +13,10 @@ from django.utils.text import slugify
 from ..services import backend_api
 
 MAIN_ENDPOINTS = [
+    {"method": "GET", "path": "/openapi.json", "area": "Docs"},
+    {"method": "GET", "path": "/docs", "area": "Docs"},
+    {"method": "GET", "path": "/docs/oauth2-redirect", "area": "Docs"},
+    {"method": "GET", "path": "/redoc", "area": "Docs"},
     {"method": "GET", "path": "/health", "area": "Health"},
     {"method": "POST", "path": "/auth/register", "area": "Auth"},
     {"method": "POST", "path": "/auth/login", "area": "Auth"},
@@ -40,11 +44,32 @@ MAIN_ENDPOINTS = [
     {"method": "DELETE", "path": "/chats/{chat_id}", "area": "Chats"},
     {"method": "GET", "path": "/chats/{chat_id}/messages", "area": "Messages"},
     {"method": "POST", "path": "/chats/{chat_id}/messages", "area": "Messages"},
+    {
+        "method": "POST",
+        "path": "/chats/{chat_id}/messages/stream",
+        "area": "Messages",
+    },
+    {
+        "method": "POST",
+        "path": "/chats/messages/{message_id}/regenerate",
+        "area": "Messages",
+    },
     {"method": "GET", "path": "/projects/{project_id}/documents", "area": "Documents"},
     {"method": "POST", "path": "/projects/{project_id}/documents", "area": "Documents"},
-    {"method": "DELETE", "path": "/documents/{document_id}", "area": "Documents"},
+    {"method": "GET", "path": "/documents/{document_id}", "area": "Documents"},
     {"method": "GET", "path": "/documents/{document_id}/chunks", "area": "Documents"},
+    {"method": "DELETE", "path": "/documents/{document_id}", "area": "Documents"},
     {"method": "POST", "path": "/documents/{document_id}/process", "area": "Documents"},
+    {
+        "method": "POST",
+        "path": "/documents/{document_id}/process/cancel",
+        "area": "Documents",
+    },
+    {
+        "method": "POST",
+        "path": "/documents/{document_id}/process/retry",
+        "area": "Documents",
+    },
     {
         "method": "POST",
         "path": "/documents/{document_id}/embeddings/rebuild",
@@ -52,7 +77,42 @@ MAIN_ENDPOINTS = [
     },
     {
         "method": "POST",
+        "path": "/documents/{document_id}/embeddings/rebuild/cancel",
+        "area": "Documents",
+    },
+    {
+        "method": "POST",
+        "path": "/documents/{document_id}/embeddings/rebuild/resume",
+        "area": "Documents",
+    },
+    {
+        "method": "POST",
+        "path": "/documents/{document_id}/embeddings/rebuild/retry",
+        "area": "Documents",
+    },
+    {
+        "method": "POST",
         "path": "/projects/{project_id}/embeddings/sync",
+        "area": "Projects",
+    },
+    {
+        "method": "GET",
+        "path": "/projects/{project_id}/embeddings/sync",
+        "area": "Projects",
+    },
+    {
+        "method": "POST",
+        "path": "/projects/{project_id}/embeddings/sync/cancel",
+        "area": "Projects",
+    },
+    {
+        "method": "POST",
+        "path": "/projects/{project_id}/embeddings/sync/resume",
+        "area": "Projects",
+    },
+    {
+        "method": "POST",
+        "path": "/projects/{project_id}/embeddings/sync/retry",
         "area": "Projects",
     },
     {"method": "GET", "path": "/projects/{project_id}/workflows", "area": "Workflows"},
@@ -72,6 +132,8 @@ MAIN_ENDPOINTS = [
     {"method": "GET", "path": "/runs", "area": "Executions"},
     {"method": "GET", "path": "/runs/{run_id}", "area": "Executions"},
     {"method": "POST", "path": "/runs/{run_id}/resume", "area": "Executions"},
+    {"method": "POST", "path": "/runs/{run_id}/retry", "area": "Executions"},
+    {"method": "POST", "path": "/runs/{run_id}/cancel", "area": "Executions"},
     {"method": "GET", "path": "/runs/{run_id}/events", "area": "Executions"},
     {"method": "GET", "path": "/agent_runs/{agent_run_id}", "area": "Executions"},
     {"method": "POST", "path": "/agent_runs/", "area": "Executions"},
@@ -81,7 +143,7 @@ AGENT_MODES = [
     {"value": "assistant", "label": "Chat Assistant"},
     {"value": "project", "label": "Project Assistant"},
     {"value": "research", "label": "Research Agent"},
-    # {"value": "coding", "label": "Coding Agent"},
+    {"value": "workspace", "label": "Workspace Agent"},
 ]
 
 CONTRACT_REVIEW_NAME = "Contract review"
