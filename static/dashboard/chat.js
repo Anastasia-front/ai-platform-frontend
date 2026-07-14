@@ -28,6 +28,18 @@ function scrollMessagesIfNearBottom(wasNearBottom) {
   }
 }
 
+function autosizeChatTextarea(textarea) {
+  const maxHeight = Number.parseFloat(getComputedStyle(textarea).maxHeight) || 320;
+  textarea.style.height = "auto";
+  const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+  textarea.style.height = `${nextHeight}px`;
+  textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+}
+
+function scheduleAutosizeChatTextarea(textarea) {
+  window.requestAnimationFrame(() => autosizeChatTextarea(textarea));
+}
+
 function removeReadyDocumentProcessActions(root = document) {
   root.querySelectorAll('[data-document-status][data-document-has-text="true"]').forEach((status) => {
     const documentId = status.dataset.documentId;
@@ -224,6 +236,7 @@ async function startMessageStream(form, content) {
   const abortController = new AbortController();
   if (textarea) {
     textarea.value = "";
+    autosizeChatTextarea(textarea);
   }
   form._messageAbortController = abortController;
   if (stopButton) {
@@ -303,6 +316,7 @@ async function startMessageStream(form, content) {
     if (!events.length) {
       if (textarea) {
         textarea.value = content;
+        autosizeChatTextarea(textarea);
       }
       removeOptimisticMessage(optimisticId);
       HTMLFormElement.prototype.submit.call(form);
@@ -340,6 +354,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!textarea) {
       return;
     }
+
+    autosizeChatTextarea(textarea);
+    textarea.addEventListener("input", () => scheduleAutosizeChatTextarea(textarea));
 
     stopButton?.addEventListener("click", () => {
       if (form.dataset.messageStreaming === "true" && form._messageAbortController) {
@@ -429,6 +446,7 @@ document.body.addEventListener("htmx:configRequest", (event) => {
     delete form.dataset.emptyStateHtml;
   }
   textarea.value = "";
+  autosizeChatTextarea(textarea);
 
   const button = form.querySelector('button[type="submit"]');
   window.DashboardLoadingButtons?.setLoading(button, button?.dataset.loadingLabel || "Sending...");
@@ -463,6 +481,7 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
   const textarea = form.querySelector('textarea[name="content"]');
   if (textarea && form.dataset.pendingContent) {
     textarea.value = form.dataset.pendingContent;
+    autosizeChatTextarea(textarea);
     textarea.focus();
   }
 
