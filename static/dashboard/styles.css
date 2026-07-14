@@ -1048,6 +1048,13 @@ h2 {
   padding: 14px;
 }
 
+.composer textarea {
+  max-height: 320px;
+  min-height: 42px;
+  overflow-y: hidden;
+  resize: none;
+}
+
 .chat-stop-button[hidden] {
   display: none;
 }
@@ -2212,8 +2219,48 @@ h2 {
   padding-top: 10px;
 }
 
+.document-rebuild-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
 .document-rebuild-list strong {
   margin-right: 20px;
+}
+
+.document-embedding-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.embedding-state-badge {
+  justify-self: start;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 3px 8px;
+}
+
+.embedding-state-badge.success {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.embedding-state-badge.warning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.embedding-state-badge.live {
+  border-color: #bae6fd;
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .document-rebuild-actions {
@@ -2278,8 +2325,10 @@ h2 {
 .guide-jump-list {
   align-content: start;
   display: grid;
+  grid-auto-flow: column;
   gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, auto));
 }
 
 .guide-jump-list a,
@@ -2301,6 +2350,12 @@ h2 {
 .guide-flow-grid {
   display: grid;
   gap: 14px;
+}
+
+.guide-anchor {
+  display: block;
+  height: 0;
+  overflow: hidden;
 }
 
 /* .guide-grid {
@@ -2339,13 +2394,29 @@ h2 {
   padding-left: 20px;
 }
 
-.guide-two-column {
+.guide-two-column,
+.guide-agent-grid,
+.guide-action-grid {
   display: grid;
   gap: 12px;
+}
+
+.guide-two-column {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.guide-agent-grid,
+.guide-action-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.guide-action-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .guide-two-column > div,
+.guide-agent-grid > div,
+.guide-action-grid > div,
 .guide-callout,
 .guide-status-list div,
 .guide-flow-grid div,
@@ -2357,6 +2428,8 @@ h2 {
 }
 
 .guide-two-column > div,
+.guide-agent-grid > div,
+.guide-action-grid > div,
 .guide-flow-grid div {
   display: grid;
   gap: 8px;
@@ -2553,8 +2626,15 @@ h2 {
   .guide-hero,
   .guide-grid,
   .guide-two-column,
+  .guide-agent-grid,
+  .guide-action-grid,
   .guide-template-grid {
     grid-template-columns: 1fr;
+  }
+
+  .guide-jump-list {
+    grid-auto-flow: row;
+    grid-template-rows: none;
   }
 }
 
