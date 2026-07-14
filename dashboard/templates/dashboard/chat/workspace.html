@@ -49,11 +49,11 @@
                         <textarea name="content" rows="1" placeholder="Message the assistant..." required></textarea>
                         <select name="agent_name" class="compact-form-control" aria-label="Agent mode">
                             {% for mode in agent_modes %}
-                                <option value="{{ mode.value }}" {% if mode.value == active_chat.agent_name %}selected{% endif %}>{{ mode.label }}</option>
+                                <option value="{{ mode.value }}" {% if mode.value == active_chat.agent_name or active_chat.agent_name == "coding" and mode.value == "workspace" %}selected{% endif %}>{{ mode.label }}</option>
                             {% endfor %}
                         </select>
                         <button type="button" class="danger-button chat-stop-button" data-message-stop hidden>Stop</button>
-                        <button type="submit" data-loading-label="Sending...">Send</button>
+                        <button type="submit" data-loading-label="Thinking...">Send</button>
                     </form>
                 {% else %}
                     <div class="empty-state center-state">

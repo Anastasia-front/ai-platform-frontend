@@ -17,8 +17,10 @@
             <a href="#providers">Providers</a>
             <a href="#workflows">Workflows</a>
             <a href="#executions">Executions</a>
+            <a href="#flow-control">Flow Control</a>
+            <a href="#agent-modes">Agent Modes</a>
             <a href="#interface">Interface</a>
-            <a href="#flows">Usage flows</a>
+            <a href="#flows">Usage Flows</a>
         </nav>
     </header>
 
@@ -47,12 +49,6 @@
                     <h3>Project chat</h3>
                     <p>When processed project documents are available, the backend retrieves matching document chunks and adds them as RAG context before asking the LLM.</p>
                 </div>
-            </div>
-            <h3>Agent modes</h3>
-            <div class="guide-pill-row">
-                {% for mode in guide_agent_modes %}
-                    <span>{{ mode.label }}</span>
-                {% endfor %}
             </div>
         </article>
 
@@ -127,7 +123,7 @@
         <article class="guide-card" id="executions">
             <span class="eyebrow">Results</span>
             <h2>Executions</h2>
-            <p>Workflow runs use statuses: <strong>pending</strong>, <strong>running</strong>, <strong>completed</strong>, <strong>failed</strong>, and <strong>paused</strong>.</p>
+            <p>Workflow runs use statuses such as <strong>pending</strong>, <strong>running</strong>, <strong>completed</strong>, <strong>failed</strong>, <strong>paused</strong>, and <strong>canceled</strong>. Pending is the queued state shown before a worker starts the run.</p>
             <ul>
                 <li>The Executions page lists workflow runs and keeps active statuses updated.</li>
                 <li>The Execution Details page shows structured output when available.</li>
@@ -136,13 +132,93 @@
             </ul>
         </article>
 
+        <article class="guide-card wide" id="flow-control">
+            <span id="execution-management" class="guide-anchor"></span>
+            <span class="eyebrow">Flow Control</span>
+            <h2>Stop, Resume, and Retry</h2>
+            <div class="guide-two-column">
+                <div>
+                    <h3>Lifecycle and status badges</h3>
+                    <p>Executions / Logs shows Workflow runs across projects. Status badges update while runs are <strong>pending</strong> or <strong>running</strong>, then stop polling once a terminal state appears. Open <strong>Execution #</strong> to see the status, structured result, event count, Run input, Run output, and Events.</p>
+                </div>
+                <div>
+                    <h3>Execution timeline</h3>
+                    <p>The current timeline is the expandable <strong>Events</strong> list on the Execution Details page. Events show event type, timestamp, and raw payload, which is the main place to inspect progress updates, error information, and debugging details.</p>
+                </div>
+            </div>
+            <div class="guide-action-grid">
+                <div>
+                    <p><strong>Stop</strong> appears for pending or running executions. It requests cancellation, marks the run as canceled in the backend, and attempts to revoke the background worker task. Cancellation is best-effort for work already in progress; the final status appears in the execution badge and Execution Details. Navigating away does not stop a background execution.</p>
+                </div>
+                <div>
+                    <p><strong>Retry</strong> appears for completed, failed, paused, canceled, or cancelled executions. It starts a new execution using the same workflow and original run input, then redirects to the new Execution Details page when the backend returns the new run. Retry differs from Resume because it creates a fresh run rather than continuing the existing one.</p>
+                </div>
+                <div>
+                    <p><strong>Resume</strong> appears for failed, paused, canceled, or cancelled executions. It asks the backend to continue the same execution from the run state it can recover, including already completed workflow steps where the backend has them. Progress and final results appear on the same execution record.</p>
+                </div>
+            </div>
+            <p>Chats create conversation messages. Workflows create workflow executions. Workspace Agent can inspect and queue workflow-related operations from chat, but execution history is monitored from <strong>Executions / Logs</strong>.</p>
+        </article>
+
+        <article class="guide-card wide" id="agent-modes">
+            <span class="eyebrow">AI Assistants</span>
+            <h2>Agent Modes</h2>
+            <div class="guide-agent-grid">
+                <div>
+                    <h3>Chat Assistant</h3>
+                    <p>Chat Assistant is the general-purpose assistant for everyday questions and writing help. Use it for explanations, editing, translation, brainstorming, coding questions, and follow-up questions that rely on conversation history. It does not perform platform automation such as creating workflows or rebuilding embeddings.</p>
+                    <ul>
+                        <li>Explain how JWT authentication works.</li>
+                        <li>Improve this email.</li>
+                        <li>Translate this paragraph into French.</li>
+                        <li>Write a PostgreSQL query to find duplicate users.</li>
+                        <li>Explain Docker networking.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Project Assistant</h3>
+                    <p>Project Assistant specializes in the current project and uses uploaded, processed project documents as context when relevant. Use it to summarize, compare, and explain project content, or to answer questions grounded in project files. It can answer from project context, but it does not change platform resources.</p>
+                    <ul>
+                        <li>Summarize the uploaded contract.</li>
+                        <li>What are the main project requirements?</li>
+                        <li>Compare these two specifications.</li>
+                        <li>Which documents mention PostgreSQL?</li>
+                        <li>Explain the deployment process described in the uploaded documentation.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Research Agent</h3>
+                    <p>Research Agent is the analysis-focused AI for the active workspace/project. Select it from the Agent mode dropdown in the chat composer; it uses the active project context and uploaded project documents to perform deeper investigations. It can compare multiple documents, identify risks, extract requirements, detect inconsistencies, build structured summaries, and synthesize information across different sources. It focuses on analysis and evidence gathering rather than executing platform operations or modifying workspace resources.</p>
+                    <ul>
+                        <li>Identify the main project risks.</li>
+                        <li>Compare all uploaded requirements documents.</li>
+                        <li>Create a stakeholder summary.</li>
+                        <li>Find conflicting requirements.</li>
+                        <li>Produce a structured project overview.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Workspace Agent</h3>
+                    <p>Workspace Agent is the operational AI for the active workspace/project. Select it from the Agent mode dropdown in the chat composer; it uses the active project context and may use uploaded project documents. It can inspect documents and workflows, check embedding rebuild needs, process documents, rebuild or sync embeddings, create or modify workflows, run workflows, inspect execution history, and diagnose failed executions. Long-running actions use background execution, and it cannot operate outside resources owned by the current user.</p>
+                    <ul>
+                        <li>Check which documents need embedding rebuild.</li>
+                        <li>Update files to use the current embedding model.</li>
+                        <li>Create a workflow that extracts invoice information.</li>
+                        <li>Run the contract review workflow on contract.pdf.</li>
+                        <li>Explain why the latest workflow execution failed.</li>
+                    </ul>
+                </div>
+            </div>
+        </article>
+
         <article class="guide-card" id="interface">
             <span class="eyebrow">Interface</span>
-            <h2>Sidebar and expandable sections</h2>
+            <h2>UI / hidden interactions</h2>
             <ol>
                 <li>The sidebar can be opened, closed, and resized on desktop. The collapsed state and width are saved in your browser.</li>
                 <li>When the sidebar is closed on desktop, move the pointer to the left edge of the viewport to temporarily reveal it. It remains visible while you interact with it, then hides again after the pointer leaves.</li>
                 <li>Many pages use expandable blocks. When you see an arrow, chevron, disclosure icon, or expand icon, open it to reveal details such as workflow templates, steps, events, logs, raw input, or raw output.</li>
+                <li>The chat message textarea grows automatically for long prompts, pasted text, or workflow instructions, then scrolls internally after it reaches its maximum height.</li>
             </ol>
         </article>
 

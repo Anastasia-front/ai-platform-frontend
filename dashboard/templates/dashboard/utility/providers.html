@@ -1,4 +1,5 @@
 {% extends "dashboard/app_base.html" %}
+{% load markdown_extras %}
 
 {% block title %}Providers | AI Platform{% endblock %}
 
@@ -221,10 +222,20 @@
                     <div class="document-rebuild-list">
                         {% for document in provider_documents %}
                             <article>
-                                <div>
+                                <div class="document-rebuild-main">
                                     <strong>{{ document.filename }}</strong>
-                                    <span>{{ document.status }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</span>
-                                    <span> · embeddings {{ document.embedding_status }}</span>
+                                    <div class="document-embedding-meta">
+                                        <span>Status: {{ document.status }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</span>
+                                        <span> · embeddings: {% if document.embedding_provider and document.embedding_model %}{{ document.embedding_provider }} / {{ document.embedding_model }}{% else %}provider unknown{% endif %}</span>
+                                        {% if document.embedding_dimensions %}
+                                            <span> · dimensions: {{ document.embedding_dimensions }}</span>
+                                        {% endif %}
+                                        {% if document.embeddings_updated_at %}
+                                            <span> · updated: {{ document.embeddings_updated_at|human_datetime }}</span>
+                                        {% endif %}
+                                        <span> · embedding status: {{ document.embedding_status }}</span>
+                                    </div>
+                                    <span class="embedding-state-badge {{ document.embedding_rebuild_state.tone }}">{{ document.embedding_rebuild_state.label }}</span>
                                 </div>
                                 <div class="document-rebuild-actions">
                                     {% if document.embedding_status == "queued" or document.embedding_status == "processing" or document.embedding_status == "cancelling" %}
