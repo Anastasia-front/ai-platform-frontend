@@ -15,6 +15,7 @@ urlpatterns = [
     path('projects/', views.projects, name='projects'),
     path('projects/new/', views.new_project, name='new_project'),
     path('projects/<slug:project_slug>/', views.project_detail, name='project_detail'),
+    path('projects/<slug:project_slug>/rename/', views.rename_project, name='rename_project'),
     path('projects/<slug:project_slug>/delete/', views.delete_project, name='delete_project'),
     path('projects/<slug:project_slug>/chats/new/', views.new_chat, name='new_chat'),
     path(
@@ -26,6 +27,11 @@ urlpatterns = [
         'projects/<slug:project_slug>/chats/<slug:chat_slug>/delete/',
         views.delete_chat,
         name='delete_chat',
+    ),
+    path(
+        'projects/<slug:project_slug>/chats/<slug:chat_slug>/rename/',
+        views.rename_chat,
+        name='rename_chat',
     ),
     path(
         'projects/<slug:project_slug>/chats/<slug:chat_slug>/messages/send/',
@@ -97,6 +103,11 @@ urlpatterns = [
         name='delete_workflow',
     ),
     path(
+        'workflows/projects/<slug:project_slug>/<slug:workflow_slug>/rename/',
+        views.rename_workflow,
+        name='rename_workflow',
+    ),
+    path(
         'workflows/projects/<slug:project_slug>/<slug:workflow_slug>/steps/new/',
         views.create_workflow_step,
         name='create_workflow_step',
@@ -146,6 +157,12 @@ urlpatterns = [
     path('executions/<int:run_id>/cancel/', views.cancel_execution, name='cancel_execution'),
     path('executions/<int:run_id>/resume/', views.resume_execution, name='resume_execution'),
     path('executions/<int:run_id>/retry/', views.retry_execution, name='retry_execution'),
+    path('executions/<int:run_id>/delete/', views.delete_execution, name='delete_execution'),
+    path(
+        'executions/delete-canceled/',
+        views.delete_canceled_executions,
+        name='delete_canceled_executions',
+    ),
     path(
         'providers/projects/<slug:project_slug>/embeddings/<slug:action>/',
         views.control_project_embeddings,
