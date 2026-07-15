@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlencode
 
 import requests
 from django.conf import settings
@@ -134,6 +135,15 @@ def get_project(token, project_id):
     return _request('GET', f'/projects/{project_id}', token=token)
 
 
+def update_project(token, project_id, name):
+    return _request(
+        'PATCH',
+        f'/projects/{project_id}',
+        token=token,
+        json={'name': name},
+    )
+
+
 def delete_project(token, project_id):
     return _request('DELETE', f'/projects/{project_id}', token=token)
 
@@ -153,6 +163,15 @@ def create_chat(token, project_id, title, agent_name='assistant'):
 
 def get_chat(token, chat_id):
     return _request('GET', f'/chats/{chat_id}', token=token)
+
+
+def update_chat(token, chat_id, title):
+    return _request(
+        'PATCH',
+        f'/chats/{chat_id}',
+        token=token,
+        json={'title': title},
+    )
 
 
 def delete_chat(token, chat_id):
@@ -267,6 +286,15 @@ def create_workflow(token, project_id, name):
     )
 
 
+def update_workflow(token, workflow_id, name):
+    return _request(
+        'PATCH',
+        f'/workflows/{workflow_id}',
+        token=token,
+        json={'name': name},
+    )
+
+
 def delete_workflow(token, workflow_id):
     return _request('DELETE', f'/workflows/{workflow_id}', token=token)
 
@@ -325,8 +353,28 @@ def retry_workflow_run(token, run_id):
     return _request('POST', f'/runs/{run_id}/retry', token=token)
 
 
-def list_workflow_runs(token):
-    return _request('GET', '/runs', token=token)
+def list_workflow_runs(token, page=1, page_size=20, status=None, project_id=None):
+    params = {
+        'page': page,
+        'page_size': page_size,
+    }
+    if status:
+        params['status'] = status
+    if project_id:
+        params['project_id'] = project_id
+
+    return _request('GET', f'/runs?{urlencode(params)}', token=token)
+
+
+def delete_workflow_run(token, run_id):
+    return _request('DELETE', f'/runs/{run_id}', token=token)
+
+
+def delete_canceled_workflow_runs(token, project_id=None):
+    path = '/runs/canceled'
+    if project_id:
+        path = f'{path}?{urlencode({"project_id": project_id})}'
+    return _request('DELETE', path, token=token)
 
 
 def get_workflow_run(token, run_id):
