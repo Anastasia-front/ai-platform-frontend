@@ -520,6 +520,33 @@ body.sidebar-resizing {
   min-height: 36px;
 }
 
+.rename-panel {
+  margin-top: 10px;
+}
+
+.rename-panel summary {
+  color: #0369a1;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.rename-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 320px) auto auto;
+  gap: 8px;
+  margin-top: 8px;
+  max-width: 560px;
+}
+
+.rename-form input {
+  min-width: 0;
+}
+
+.rename-form button {
+  min-height: 36px;
+}
+
 .utility-nav {
   display: grid;
   gap: 4px;
@@ -1912,12 +1939,46 @@ h2 {
   background: #ffffff;
 }
 
+.execution-filter-panel {
+  display: grid;
+  gap: 10px;
+  margin: 12px 20px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #f8fcff;
+  padding: 12px;
+}
+
+.execution-filter-panel h2 {
+  color: #172033;
+  font-size: 15px;
+  margin: 0;
+}
+
+.execution-filter-groups {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+
+.execution-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: end;
+}
+
+.execution-filter-label {
+  color: #ea7130;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .execution-tabs {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  border-bottom: 1px solid #bae6fd;
-  padding: 12px 20px;
+  padding: 0;
   height: min-content;
 }
 
@@ -1926,7 +1987,7 @@ h2 {
   border-radius: 8px;
   color: #0369a1;
   font-weight: 800;
-  padding: 8px 10px;
+  padding: 7px 10px;
   text-decoration: none;
   white-space: nowrap;
   height: max-content;
@@ -1937,6 +1998,26 @@ h2 {
   border-color: #fb923c;
   background: #fff7ed;
   color: #c2410c;
+}
+
+.execution-buttons-container {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.execution-toolbar {
+  align-items: center;
+  color: #405067;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px 20px 0 20px;
+}
+
+.execution-toolbar form {
+  margin: 0;
 }
 
 .execution-list {
@@ -1994,6 +2075,30 @@ h2 {
 .execution-list span,
 .execution-list small {
   color: #647386;
+}
+
+.pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 20px 20px;
+}
+
+.pagination-controls .button {
+  min-width: 40px;
+}
+
+.pagination-controls .active {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.pagination-controls .disabled {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .execution-summary-grid {
@@ -2648,6 +2753,7 @@ h2 {
   .composer,
   .compact-form,
   .inline-create-form,
+  .rename-form,
   .settings-list div,
   .endpoint-row {
     grid-template-columns: 1fr;
