@@ -14,6 +14,7 @@ from .chats import (
     chat_detail,
     delete_chat,
     new_chat,
+    rename_chat,
     send_chat_message,
     stream_chat_message,
 )
@@ -27,6 +28,8 @@ from .documents import (
 )
 from .executions import (
     cancel_execution,
+    delete_canceled_executions,
+    delete_execution,
     execution_detail,
     execution_status_partial,
     executions,
@@ -34,7 +37,7 @@ from .executions import (
     retry_execution,
 )
 from .guide import guide
-from .projects import delete_project, new_project, project_detail, projects
+from .projects import delete_project, new_project, project_detail, projects, rename_project
 from .providers import (
     check_provider_health,
     control_document_embeddings,
@@ -51,6 +54,7 @@ from .workflows import (
     create_workflow_step,
     delete_workflow,
     delete_workflow_step,
+    rename_workflow,
     run_contract_review,
     run_job_vacancy,
     run_workflow,

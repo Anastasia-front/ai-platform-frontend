@@ -93,6 +93,46 @@ def chat_detail(request, project_slug, chat_slug):
 
 @auth_required
 @require_POST
+def rename_chat(request, project_slug, chat_slug):
+    token = session_token(request)
+    project, project_error = resolve_project(token, project_slug)
+    if project_error:
+        django_messages.error(request, project_error)
+        return redirect("dashboard:projects")
+
+    chat, chat_error = resolve_chat(token, project["id"], chat_slug)
+    if chat_error:
+        django_messages.error(request, chat_error)
+        return redirect(
+            "dashboard:project_detail",
+            project_slug=resource_slug(project, "name"),
+        )
+
+    title = request.POST.get("title", "").strip()
+    if not title:
+        django_messages.error(request, "Chat title is required.")
+        return redirect(
+            "dashboard:chat_detail",
+            project_slug=resource_slug(project, "name"),
+            chat_slug=resource_slug(chat, "title"),
+        )
+
+    try:
+        chat = backend_api.update_chat(token, chat["id"], title)
+        django_messages.success(request, "Chat renamed.")
+    except backend_api.BackendAPIError as exc:
+        handle_api_error(request, exc)
+        django_messages.error(request, exc.message)
+
+    return redirect(
+        "dashboard:chat_detail",
+        project_slug=resource_slug(project, "name"),
+        chat_slug=resource_slug(chat, "title"),
+    )
+
+
+@auth_required
+@require_POST
 def delete_chat(request, project_slug, chat_slug):
     token = session_token(request)
     project, project_error = resolve_project(token, project_slug)

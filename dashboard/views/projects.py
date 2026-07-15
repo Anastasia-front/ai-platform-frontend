@@ -73,6 +73,39 @@ def project_detail(request, project_slug):
 
 @auth_required
 @require_POST
+def rename_project(request, project_slug):
+    token = session_token(request)
+    project, project_error = resolve_project(token, project_slug)
+    if project_error:
+        django_messages.error(request, project_error)
+        return redirect("dashboard:projects")
+
+    name = request.POST.get("name", "").strip()
+    if not name:
+        django_messages.error(request, "Project name is required.")
+        return redirect(
+            "dashboard:project_detail",
+            project_slug=resource_slug(project, "name"),
+        )
+
+    try:
+        project = backend_api.update_project(token, project["id"], name)
+        django_messages.success(request, "Project renamed.")
+        return redirect(
+            "dashboard:project_detail",
+            project_slug=resource_slug(project, "name"),
+        )
+    except backend_api.BackendAPIError as exc:
+        handle_api_error(request, exc)
+        django_messages.error(request, exc.message)
+        return redirect(
+            "dashboard:project_detail",
+            project_slug=resource_slug(project, "name"),
+        )
+
+
+@auth_required
+@require_POST
 def delete_project(request, project_slug):
     token = session_token(request)
     project, project_error = resolve_project(token, project_slug)
@@ -88,4 +121,3 @@ def delete_project(request, project_slug):
         django_messages.error(request, exc.message)
 
     return redirect("dashboard:projects")
-

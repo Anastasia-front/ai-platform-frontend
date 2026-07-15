@@ -200,6 +200,35 @@ def create_workflow(request, project_slug):
 
 @auth_required
 @require_POST
+def rename_workflow(request, project_slug, workflow_slug):
+    token = session_token(request)
+    project, workflow, error = resolve_project_workflow(
+        token, project_slug, workflow_slug
+    )
+    if error:
+        django_messages.error(request, error)
+        return redirect("dashboard:workflows")
+
+    name = request.POST.get("name", "").strip()
+    if not name:
+        django_messages.error(request, "Workflow name is required.")
+        return redirect(workflow_url(project, workflow))
+
+    try:
+        workflow = backend_api.update_workflow(token, workflow["id"], name)
+        django_messages.success(request, "Workflow renamed.")
+    except backend_api.BackendAPIError as exc:
+        handle_api_error(request, exc)
+        django_messages.error(request, exc.message)
+
+    return redirect(
+        f"{reverse('dashboard:workflows')}?project={resource_slug(project, 'name')}"
+        f"&workflow={resource_slug(workflow, 'name')}"
+    )
+
+
+@auth_required
+@require_POST
 def delete_workflow(request, project_slug, workflow_slug):
     token = session_token(request)
     project, workflow, error = resolve_project_workflow(

@@ -36,11 +36,13 @@ MAIN_ENDPOINTS = [
     {"method": "GET", "path": "/projects/", "area": "Projects"},
     {"method": "POST", "path": "/projects/", "area": "Projects"},
     {"method": "GET", "path": "/projects/{project_id}", "area": "Projects"},
+    {"method": "PATCH", "path": "/projects/{project_id}", "area": "Projects"},
     {"method": "DELETE", "path": "/projects/{project_id}", "area": "Projects"},
     {"method": "POST", "path": "/projects/{project_id}/retrieve", "area": "Projects"},
     {"method": "GET", "path": "/projects/{project_id}/chats", "area": "Chats"},
     {"method": "POST", "path": "/projects/{project_id}/chats", "area": "Chats"},
     {"method": "GET", "path": "/chats/{chat_id}", "area": "Chats"},
+    {"method": "PATCH", "path": "/chats/{chat_id}", "area": "Chats"},
     {"method": "DELETE", "path": "/chats/{chat_id}", "area": "Chats"},
     {"method": "GET", "path": "/chats/{chat_id}/messages", "area": "Messages"},
     {"method": "POST", "path": "/chats/{chat_id}/messages", "area": "Messages"},
@@ -118,6 +120,7 @@ MAIN_ENDPOINTS = [
     {"method": "GET", "path": "/projects/{project_id}/workflows", "area": "Workflows"},
     {"method": "POST", "path": "/projects/{project_id}/workflows", "area": "Workflows"},
     {"method": "GET", "path": "/workflows/{workflow_id}", "area": "Workflows"},
+    {"method": "PATCH", "path": "/workflows/{workflow_id}", "area": "Workflows"},
     {"method": "DELETE", "path": "/workflows/{workflow_id}", "area": "Workflows"},
     {"method": "POST", "path": "/workflows/{workflow_id}/run", "area": "Workflows"},
     {
@@ -134,6 +137,8 @@ MAIN_ENDPOINTS = [
     {"method": "POST", "path": "/runs/{run_id}/resume", "area": "Executions"},
     {"method": "POST", "path": "/runs/{run_id}/retry", "area": "Executions"},
     {"method": "POST", "path": "/runs/{run_id}/cancel", "area": "Executions"},
+    {"method": "DELETE", "path": "/runs/canceled", "area": "Executions"},
+    {"method": "DELETE", "path": "/runs/{run_id}", "area": "Executions"},
     {"method": "GET", "path": "/runs/{run_id}/events", "area": "Executions"},
     {"method": "GET", "path": "/agent_runs/{agent_run_id}", "area": "Executions"},
     {"method": "POST", "path": "/agent_runs/", "area": "Executions"},
@@ -1375,6 +1380,7 @@ def workflow_projects_by_id(token, projects):
 
         for workflow in workflows_payload:
             workflow_project_map[workflow.get("id")] = {
+                "id": project.get("id"),
                 "name": project.get("name", "Project"),
                 "slug": project.get("slug") or resource_slug(project, "name"),
             }
