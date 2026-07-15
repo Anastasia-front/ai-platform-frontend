@@ -314,6 +314,15 @@
                         <div class="width-100">
                             <p class="eyebrow">{{ workflow_project.name }}</p>
                             <h2>{{ active_workflow.name }}</h2>
+                            <details class="rename-panel">
+                                <summary>Rename workflow</summary>
+                                <form method="post" action="{% url 'dashboard:rename_workflow' workflow_project.slug active_workflow.slug %}" class="rename-form" data-loading-form>
+                                    {% csrf_token %}
+                                    <input type="text" name="name" value="{{ active_workflow.name }}" maxlength="255" required>
+                                    <button type="submit" data-loading-label="Saving...">Save</button>
+                                    <button type="button" class="secondary" onclick="this.closest('details').removeAttribute('open')">Cancel</button>
+                                </form>
+                            </details>
                             <details class="workflow-description-dropdown">
                                 <summary>Workflow details</summary>
                                 <div class="workflow-detail-meta">

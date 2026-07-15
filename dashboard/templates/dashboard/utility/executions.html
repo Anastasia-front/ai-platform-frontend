@@ -12,12 +12,43 @@
         </div>
     </header>
 
-    <nav class="execution-tabs" aria-label="Execution project filter">
-        <a href="{% url 'dashboard:executions' %}" {% if not active_execution_project %}class="active"{% endif %}>All</a>
-        {% for project in execution_project_tabs %}
-            <a href="{% url 'dashboard:executions' %}?project={{ project.slug }}" {% if active_execution_project == project.slug %}class="active"{% endif %}>{{ project.name }}</a>
-        {% endfor %}
-    </nav>
+
+    <section class="execution-filter-panel" aria-labelledby="execution-filter-heading">
+        <h2 id="execution-filter-heading">Execution filters</h2>
+        <div class="execution-filter-groups">
+            <div class="execution-filter-group">
+                <span class="execution-filter-label">Project</span>
+                <nav class="execution-tabs" aria-label="Execution project filter">
+                    {% for tab in execution_project_filter_tabs %}
+                        <a href="{{ tab.url }}" {% if tab.active %}class="active"{% endif %}>{{ tab.label }}</a>
+                    {% endfor %}
+                </nav>
+            </div>
+
+            <div class="execution-filter-group">
+                <span class="execution-filter-label">Status</span>
+                <nav class="execution-tabs execution-status-tabs" aria-label="Execution status filter">
+                    {% for tab in execution_status_filter_tabs %}
+                        <a href="{{ tab.url }}" {% if tab.active %}class="active"{% endif %}>{{ tab.label }}</a>
+                    {% endfor %}
+                </nav>
+            </div>
+        </div>
+    </section>
+
+    <div class="execution-toolbar">
+        <strong>Total executions: {{ execution_total|default:0 }}</strong>
+        {% if active_execution_status == "canceled" and execution_total %}
+            <form method="post" action="{% url 'dashboard:delete_canceled_executions' %}" data-loading-form data-confirm-message="Delete {{ execution_total }} cancelled execution{{ execution_total|pluralize }} permanently? This action cannot be undone.">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% if active_execution_project_id %}
+                    <input type="hidden" name="project_id" value="{{ active_execution_project_id }}">
+                {% endif %}
+                <button type="submit" class="danger-button" data-loading-label="Deleting...">Delete cancelled executions</button>
+            </form>
+        {% endif %}
+    </div>
 
     {% if executions_error %}
         <div class="notice danger-panel">{{ executions_error }}</div>
@@ -38,7 +69,19 @@
                         {% endif %}
                         <small>{{ run.created_at|human_datetime }}</small>
                     </a>
-                    {% include "dashboard/partials/execution_actions.html" with workflow_run=run %}
+                    <div class="execution-buttons-container">
+                        {% include "dashboard/partials/execution_actions.html" with workflow_run=run %}
+                        {% if run.status == "completed" or run.status == "failed" or run.status == "paused" or run.status == "canceled" or run.status == "cancelled" %}
+                            <form method="post" action="{% url 'dashboard:delete_execution' run.id %}" data-loading-form data-confirm-message="Delete this execution permanently? This action cannot be undone.">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                {% if execution_last_item_on_page %}
+                                    <input type="hidden" name="last_item_on_page" value="1">
+                                {% endif %}
+                                <button type="submit" class="danger-button" data-loading-label="Deleting...">Delete</button>
+                            </form>
+                        {% endif %}
+                    </div>
                 </article>
             {% endfor %}
         </div>
@@ -47,6 +90,26 @@
             <h2>No workflow runs yet</h2>
             <p>Run a workflow from the builder and its summary will appear here.</p>
         </div>
+    {% endif %}
+
+    {% if execution_pagination %}
+        <nav class="pagination-controls" aria-label="Execution pagination">
+            {% if execution_pagination.previous_url %}
+                <a class="button secondary" href="{{ execution_pagination.previous_url }}">Previous</a>
+            {% else %}
+                <span class="button secondary disabled">Previous</span>
+            {% endif %}
+
+            {% for page in execution_pagination.pages %}
+                <a class="button secondary {% if page.active %}active{% endif %}" href="{{ page.url }}">{{ page.number }}</a>
+            {% endfor %}
+
+            {% if execution_pagination.next_url %}
+                <a class="button secondary" href="{{ execution_pagination.next_url }}">Next</a>
+            {% else %}
+                <span class="button secondary disabled">Next</span>
+            {% endif %}
+        </nav>
     {% endif %}
 </section>
 {% endblock %}
