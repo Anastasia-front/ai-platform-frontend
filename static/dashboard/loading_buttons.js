@@ -40,6 +40,11 @@
         return;
       }
 
+      if (form.dataset.confirmMessage && !window.confirm(form.dataset.confirmMessage)) {
+        event.preventDefault();
+        return;
+      }
+
       const submitter =
         event.submitter ||
         form.querySelector('button[type="submit"], input[type="submit"]');
