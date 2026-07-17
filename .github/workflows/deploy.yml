@@ -1,0 +1,124 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  IMAGE_TAG: ${{ github.sha }}
+  CONTAINER_NAME: ai-platform-frontend
+  SSM_PARAMETER_PATH: ${{ vars.SSM_PARAMETER_PATH }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION \
+          | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -t $ECR_REPOSITORY:$IMAGE_TAG .
+
+      - name: Tag Docker image
+        run: |
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG \
+            $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Push Docker image
+        run: |
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Deploy to EC2 via SSM
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --region $AWS_REGION \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy ai-platform frontend" \
+            --timeout-seconds 1800 \
+            --parameters 'commands=[
+              "set -e",
+              "AWS_REGION=${{ env.AWS_REGION }}",
+              "ECR_REGISTRY=${{ env.ECR_REGISTRY }}",
+              "ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}",
+              "IMAGE_TAG=${{ github.sha }}",
+              "CONTAINER_NAME=${{ env.CONTAINER_NAME }}",
+              "SSM_PARAMETER_PATH=${{ env.SSM_PARAMETER_PATH }}",
+              "DEPLOY_DIR=/home/ec2-user/ai-platform-frontend-deploy",
+              "mkdir -p $DEPLOY_DIR",
+              "cd $DEPLOY_DIR",
+
+              "aws ssm get-parameters-by-path --path $SSM_PARAMETER_PATH --with-decryption --region $AWS_REGION --recursive --query \"Parameters[*].[Name,Value]\" --output text | awk -F\"\t\" '\''{split($1,a,\"/\"); print a[length(a)]\"=\"$2}'\'' > .env",
+
+              "PREVIOUS_IMAGE=$(docker inspect $CONTAINER_NAME --format='\''{{.Config.Image}}'\'' 2>/dev/null || true)",
+              "echo \"$PREVIOUS_IMAGE\" > previous_image.txt",
+
+              "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY",
+
+              "docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
+
+              "docker stop $CONTAINER_NAME || true",
+              "docker rm $CONTAINER_NAME || true",
+
+              "docker run -d --name $CONTAINER_NAME --env-file .env -p 80:8001 --restart unless-stopped $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
+
+              "for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://localhost/ && echo Frontend is healthy && docker image prune -a -f --filter \"until=72h\" && exit 0 || true; echo Waiting for frontend...; sleep 3; done",
+
+              "docker ps -a",
+              "docker logs --tail=100 $CONTAINER_NAME || true",
+              "echo Deployment failed. Rolling back...",
+              "FAILED_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
+              "PREVIOUS_IMAGE=$(cat previous_image.txt)",
+              "if [ -n \"$PREVIOUS_IMAGE\" ]; then docker stop $CONTAINER_NAME || true; docker rm $CONTAINER_NAME || true; docker run -d --name $CONTAINER_NAME --env-file .env -p 80:8001 --restart unless-stopped \"$PREVIOUS_IMAGE\"; fi",
+              "docker image rm \"$FAILED_IMAGE\" || true",
+              "docker image prune -a -f --filter \"until=72h\" || true",
+              "docker logs --tail=100 $CONTAINER_NAME || true",
+              "exit 1"
+            ],executionTimeout=["1800"]' \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "Command ID: $COMMAND_ID"
+
+          aws ssm wait command-executed \
+            --region $AWS_REGION \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" || true
+
+          aws ssm get-command-invocation \
+            --region $AWS_REGION \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --query "{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}"
+
+          STATUS=$(aws ssm get-command-invocation \
+            --region $AWS_REGION \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --query "Status" \
+            --output text)
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "Deployment failed with status: $STATUS"
+            exit 1
+          fi
