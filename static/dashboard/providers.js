@@ -3,7 +3,7 @@
 
   const providerDefaults = {
     ollama: {
-      baseUrl: "http://localhost:11434",
+      baseUrl: "http://ollama.ai-platform.internal:11434",
       chatModels: ["gemma2:2b", "llama3.2:3b", "mistral:7b", "qwen2.5:7b"],
       embeddingModels: ["nomic-embed-text"],
     },
@@ -24,7 +24,11 @@
     },
     groq: {
       baseUrl: "https://api.groq.com/openai/v1",
-      chatModels: ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"],
+      chatModels: [
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "mixtral-8x7b-32768",
+      ],
       embeddingModels: [],
     },
   };
@@ -58,7 +62,8 @@
     const applyProviderDefaults = (preserveCurrent = false) => {
       const provider = providerSelect.value;
       const defaults = providerDefaults[provider] || providerDefaults.ollama;
-      const models = kind === "embedding" ? defaults.embeddingModels : defaults.chatModels;
+      const models =
+        kind === "embedding" ? defaults.embeddingModels : defaults.chatModels;
 
       replaceSuggestions(modelInput, models);
       replaceSuggestions(fallbackInput, defaults.chatModels);
@@ -78,7 +83,9 @@
     };
 
     applyProviderDefaults(true);
-    providerSelect.addEventListener("change", () => applyProviderDefaults(false));
+    providerSelect.addEventListener("change", () =>
+      applyProviderDefaults(false),
+    );
   };
 
   const selectedProjectFromUrl = (url) => {
@@ -100,7 +107,7 @@
     const replaceEmbeddingTools = async (url, pushState = true) => {
       const scrollTop = providerConsole.scrollTop;
       const response = await fetch(url, {
-        headers: {"X-Requested-With": "XMLHttpRequest"},
+        headers: { "X-Requested-With": "XMLHttpRequest" },
       });
       if (!response.ok) {
         throw new Error("Unable to load provider project.");
@@ -108,7 +115,8 @@
 
       const html = await response.text();
       const parsedDocument = new DOMParser().parseFromString(html, "text/html");
-      const nextEmbeddingTools = parsedDocument.querySelector(".embedding-tools");
+      const nextEmbeddingTools =
+        parsedDocument.querySelector(".embedding-tools");
       const currentEmbeddingTools = document.querySelector(".embedding-tools");
 
       if (!nextEmbeddingTools || !currentEmbeddingTools) {
@@ -155,7 +163,10 @@
     if (!consoleElement) {
       return;
     }
-    sessionStorage.setItem(providerScrollStorageKey, String(consoleElement.scrollTop));
+    sessionStorage.setItem(
+      providerScrollStorageKey,
+      String(consoleElement.scrollTop),
+    );
   };
 
   const restoreProviderScroll = () => {
@@ -196,9 +207,13 @@
 
     restoreProviderScroll();
 
-    consoleElement.addEventListener("submit", () => {
-      rememberProviderScroll();
-    }, true);
+    consoleElement.addEventListener(
+      "submit",
+      () => {
+        rememberProviderScroll();
+      },
+      true,
+    );
 
     document.body.addEventListener("htmx:beforeSwap", (event) => {
       if (event.target?.classList?.contains("embedding-tools")) {
@@ -214,7 +229,9 @@
   };
 
   document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("[data-provider-form]").forEach(initializeProviderForm);
+    document
+      .querySelectorAll("[data-provider-form]")
+      .forEach(initializeProviderForm);
     initializeProjectTabs();
     initializeProviderScrollPersistence();
   });
