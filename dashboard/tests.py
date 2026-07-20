@@ -16,6 +16,30 @@ from dashboard.views import parse_contract_review_output, parse_job_vacancy_outp
 from dashboard.views.utils import redact_secrets, summarize_workflow_run
 
 
+class ProductionStaticSettingsTests(TestCase):
+    def test_debug_can_be_disabled_for_production(self):
+        with self.settings(DEBUG=False):
+            self.assertFalse(settings.DEBUG)
+
+    def test_whitenoise_middleware_follows_security_middleware(self):
+        security_index = settings.MIDDLEWARE.index(
+            "django.middleware.security.SecurityMiddleware"
+        )
+
+        self.assertEqual(
+            settings.MIDDLEWARE[security_index + 1],
+            "whitenoise.middleware.WhiteNoiseMiddleware",
+        )
+
+    def test_static_root_and_whitenoise_storage_are_configured(self):
+        self.assertTrue(settings.STATIC_ROOT)
+        self.assertEqual(settings.STATIC_URL, "/static/")
+        self.assertEqual(
+            settings.STORAGES["staticfiles"]["BACKEND"],
+            "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        )
+
+
 class TemplateFilterTests(TestCase):
     def test_human_datetime_formats_iso_timestamp(self):
         self.assertEqual(
@@ -409,7 +433,9 @@ class MarkdownRenderingTests(TestCase):
         self.assertIn("<hr>", rendered)
 
     def test_assistant_markdown_preserves_underscores_in_filenames(self):
-        rendered = render_markdown("- candidate_06_sara.txt\n- `gmail_thread_large.txt`")
+        rendered = render_markdown(
+            "- candidate_06_sara.txt\n- `gmail_thread_large.txt`"
+        )
 
         self.assertIn("candidate_06_sara.txt", rendered)
         self.assertIn("<code>gmail_thread_large.txt</code>", rendered)
@@ -445,7 +471,7 @@ class ProviderViewTests(TestCase):
         self.assertContains(response, "Embedding Providers")
         self.assertContains(response, "Save Chat Defaults")
         self.assertContains(response, "Sync Project Embeddings")
-        self.assertContains(response, 'data-loading-form')
+        self.assertContains(response, "data-loading-form")
         self.assertContains(response, 'data-loading-label="Checking..."', count=3)
         self.assertContains(response, 'data-loading-label="Syncing..."')
 
@@ -1016,9 +1042,7 @@ class WorkflowViewTests(TestCase):
     ):
         mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
 
-        response = self.client.get(
-            f"{reverse('dashboard:workflows')}?project=research"
-        )
+        response = self.client.get(f"{reverse('dashboard:workflows')}?project=research")
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "contract-result-grid")
@@ -1165,9 +1189,7 @@ class WorkflowViewTests(TestCase):
         self.assertEqual(summary["template_type"], "job-vacancy")
         self.assertEqual(summary["structured"]["score"], 72)
         self.assertEqual(summary["structured"]["strong_matches"][0]["area"], "React")
-        self.assertEqual(
-            summary["input_source"], "Vacancy link: https://example.com"
-        )
+        self.assertEqual(summary["input_source"], "Vacancy link: https://example.com")
 
     def test_execution_summary_falls_back_to_generic_rows(self):
         summary = summarize_workflow_run(
@@ -1275,9 +1297,7 @@ class BackgroundJobPollingTests(TestCase):
         self.assertNotContains(response, "hx-trigger")
 
     @patch("dashboard.views.backend_api.get_document")
-    def test_document_status_partial_stops_polling_when_failed(
-        self, mock_get_document
-    ):
+    def test_document_status_partial_stops_polling_when_failed(self, mock_get_document):
         mock_get_document.return_value = {
             "id": 42,
             "project_id": 1,
@@ -1294,9 +1314,7 @@ class BackgroundJobPollingTests(TestCase):
         self.assertContains(response, "Unsupported document type")
 
     @patch("dashboard.views.backend_api.get_workflow_run")
-    def test_execution_status_partial_polls_while_running(
-        self, mock_get_workflow_run
-    ):
+    def test_execution_status_partial_polls_while_running(self, mock_get_workflow_run):
         mock_get_workflow_run.return_value = {
             "id": 77,
             "workflow_id": 8,
@@ -1380,9 +1398,7 @@ class BackgroundJobPollingTests(TestCase):
             "text": None,
             "processing_error": None,
         }
-        first = self.client.get(
-            reverse("dashboard:document_status_partial", args=[42])
-        )
+        first = self.client.get(reverse("dashboard:document_status_partial", args=[42]))
         self.assertContains(first, "processing")
         self.assertContains(first, "hx-trigger")
 
@@ -1431,7 +1447,7 @@ def provider_payload():
                 "kind": "chat",
                 "active": True,
                 "default_model": "gemma2:2b",
-                "base_url": "http://localhost:11434",
+                "base_url": "http://ollama.ai-platform.internal:11434",
                 "api_key_configured": False,
                 "supports_api_key": False,
                 "supports_health_check": True,
@@ -1453,7 +1469,7 @@ def provider_payload():
                 "kind": "embedding",
                 "active": True,
                 "default_model": "nomic-embed-text",
-                "base_url": "http://localhost:11434",
+                "base_url": "http://ollama.ai-platform.internal:11434",
                 "api_key_configured": False,
                 "supports_api_key": False,
                 "supports_health_check": True,
@@ -1464,14 +1480,14 @@ def provider_payload():
                 "provider": "ollama",
                 "model": "gemma2:2b",
                 "fallback_model": "llama3.2:3b",
-                "base_url": "http://localhost:11434",
+                "base_url": "http://ollama.ai-platform.internal:11434",
                 "api_key_configured": False,
             },
             "embeddings": {
                 "provider": "ollama",
                 "model": "nomic-embed-text",
                 "dimensions": 768,
-                "base_url": "http://localhost:11434",
+                "base_url": "http://ollama.ai-platform.internal:11434",
                 "api_key_configured": False,
             },
         },
