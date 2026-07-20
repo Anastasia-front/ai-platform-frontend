@@ -1,0 +1,29 @@
+aws_region   = "eu-central-1"
+project_name = "ai-platform"
+
+ec2_ami = "ami-xxxxxxxxxxxxxxxxx"
+
+ssh_allowed_cidrs = [
+  "203.0.113.10/32",
+]
+
+http_allowed_cidrs = [
+  "0.0.0.0/0",
+]
+
+key_name = "ai-platform-key"
+
+frontend_instance_type = "t3.micro"
+
+backend_base_api_url = "http://backend.example.com"
+google_client_id     = "your-google-client-id"
+
+env_values = {
+  DEBUG                    = "False"
+  ALLOWED_HOSTS            = "frontend.example.com"
+  SECRET_KEY               = "replace-with-django-secret-key"
+  GOOGLE_CLIENT_SECRET     = "replace-with-google-client-secret"
+  BACKEND_REQUEST_TIMEOUT  = "30"
+  BACKEND_WORKFLOW_TIMEOUT = "180"
+}
+

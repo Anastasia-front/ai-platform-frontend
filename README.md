@@ -29,6 +29,58 @@ python manage.py runserver 8001
 
 The backend API should be available at `BASE_API_URL`. JWT access tokens are stored server-side in the Django session after login.
 
+## Infrastructure
+
+Frontend infrastructure lives in `infra/` and mirrors the backend Terraform
+layout:
+
+- `provider.tf` uses the AWS provider and variable-driven `aws_region`.
+- `backend.tf` uses local Terraform state, matching the backend repository.
+- `main.tf` composes small modules for network, IAM, EC2, ECR, and SSM.
+- environment-specific runtime config is written to SSM Parameter Store as
+  `SecureString` values under `/${project_name}-frontend`.
+
+Create an environment-specific `infra/terraform.tfvars` from
+`infra/terraform.tfvars.example` and set:
+
+- AWS placement and access values such as `aws_region`, `ec2_ami`, `key_name`,
+  `ssh_allowed_cidrs`, and `http_allowed_cidrs`.
+- `backend_base_api_url`, which Terraform injects as `BASE_API_URL`.
+- `google_client_id`, which Terraform injects as `GOOGLE_CLIENT_ID`.
+- secret and runtime values in `env_values`, such as `SECRET_KEY`,
+  `GOOGLE_CLIENT_SECRET`, `DEBUG`, `ALLOWED_HOSTS`, and backend timeout values.
+
+Deploy infrastructure:
+
+```bash
+cd infra
+terraform init
+terraform plan
+terraform apply
+```
+
+The frontend EC2 instance reads container images from ECR and receives runtime
+configuration through the same SSM-to-`.env` deployment strategy used by the
+backend.
+
+## CI/CD
+
+The GitHub Actions workflow in `.github/workflows/deploy.yml` builds the
+frontend Docker image, pushes it to ECR, then deploys to EC2 through SSM.
+
+Required GitHub secrets:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `EC2_INSTANCE_ID`
+
+Required GitHub repository variables:
+
+- `AWS_REGION`, for example `eu-central-1`
+- `ECR_REGISTRY`, for example `<account-id>.dkr.ecr.eu-central-1.amazonaws.com`
+- `ECR_REPOSITORY`, for example `ai-platform-frontend`
+- `SSM_PARAMETER_PATH`, for example `/ai-platform-frontend`
+
 ## Implemented Frontend Flow
 
 - Login, logout, and registration via the FastAPI auth endpoints.
