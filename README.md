@@ -67,6 +67,10 @@ backend.
 
 The GitHub Actions workflow in `.github/workflows/deploy.yml` builds the
 frontend Docker image, pushes it to ECR, then deploys to EC2 through SSM.
+The production container starts with Gunicorn on container port `8001`; local
+development can continue to use Django's `runserver` command.
+Keep `localhost` and `127.0.0.1` in production `ALLOWED_HOSTS` because the EC2
+deployment health check calls `http://localhost/health/`.
 
 Required GitHub secrets:
 
