@@ -77,12 +77,14 @@ jobs:
 
               "docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
 
+              "docker run --rm --env-file .env $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG python manage.py migrate --noinput",
+
               "docker stop $CONTAINER_NAME || true",
               "docker rm $CONTAINER_NAME || true",
 
               "docker run -d --name $CONTAINER_NAME --env-file .env -p 80:8001 --restart unless-stopped $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
 
-              "for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://localhost/ && echo Frontend is healthy && docker image prune -f && exit 0 || true; echo Waiting for frontend...; sleep 3; done",
+              "for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://localhost/health/ && echo Frontend is healthy && docker image prune -f && exit 0 || true; echo Waiting for frontend...; sleep 3; done",
 
               "docker ps -a",
               "docker logs --tail=100 $CONTAINER_NAME || true",
