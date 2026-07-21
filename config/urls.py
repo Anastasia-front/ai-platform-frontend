@@ -15,10 +15,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
 from django.views.generic import RedirectView
 
+
+def health(request):
+    return JsonResponse({"status": "ok"})
+
+
 urlpatterns = [
+    path('health/', health, name='health'),
     path('', include('dashboard.urls')),
     path('favicon.ico', RedirectView.as_view(url='/static/dashboard/favicon.svg', permanent=True)),
     path('admin/', admin.site.urls),

@@ -40,6 +40,14 @@ class ProductionStaticSettingsTests(TestCase):
         )
 
 
+class HealthEndpointTests(TestCase):
+    def test_health_endpoint_returns_ok_json(self):
+        response = self.client.get("/health/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+
+
 class TemplateFilterTests(TestCase):
     def test_human_datetime_formats_iso_timestamp(self):
         self.assertEqual(
