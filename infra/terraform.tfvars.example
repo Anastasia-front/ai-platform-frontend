@@ -18,12 +18,29 @@ frontend_instance_type = "t3.micro"
 backend_base_api_url = "http://backend.example.com"
 google_client_id     = "your-google-client-id"
 
+nginx_origin_certificate = <<EOT
+-----BEGIN CERTIFICATE-----
+replace-with-cloudflare-origin-certificate
+-----END CERTIFICATE-----
+EOT
+nginx_origin_certificate_version = 1
+
+nginx_origin_private_key = <<EOT
+-----BEGIN PRIVATE KEY-----
+replace-with-cloudflare-origin-private-key
+-----END PRIVATE KEY-----
+EOT
+nginx_origin_private_key_version = 1
+
 env_values = {
   DEBUG                    = "False"
-  ALLOWED_HOSTS            = "frontend.example.com"
+  ALLOWED_HOSTS            = "127.0.0.1,localhost,ai-automation-platform.com,www.ai-automation-platform.com"
+  CSRF_TRUSTED_ORIGINS     = "https://ai-automation-platform.com,https://www.ai-automation-platform.com"
+  SESSION_COOKIE_SECURE    = "True"
+  CSRF_COOKIE_SECURE       = "True"
+  SQLITE_PATH              = "/app/data/db.sqlite3"
   SECRET_KEY               = "replace-with-django-secret-key"
   GOOGLE_CLIENT_SECRET     = "replace-with-google-client-secret"
   BACKEND_REQUEST_TIMEOUT  = "30"
   BACKEND_WORKFLOW_TIMEOUT = "180"
 }
-

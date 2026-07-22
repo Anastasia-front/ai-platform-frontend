@@ -16,7 +16,7 @@ variable "ssh_allowed_cidrs" {
 }
 
 variable "http_allowed_cidrs" {
-  description = "CIDR ranges allowed to access the frontend over HTTP."
+  description = "CIDR ranges allowed to access the Nginx frontend over HTTP."
   type        = list(string)
 }
 
@@ -44,3 +44,26 @@ variable "env_values" {
   sensitive = true
 }
 
+variable "nginx_origin_certificate" {
+  type        = string
+  description = "Cloudflare Origin Certificate for the frontend Nginx origin, supplied through Terraform variables or updated directly in SSM."
+  sensitive   = true
+}
+
+variable "nginx_origin_certificate_version" {
+  type        = number
+  description = "Increment when rotating nginx_origin_certificate because value_wo is write-only."
+  default     = 1
+}
+
+variable "nginx_origin_private_key" {
+  type        = string
+  description = "Cloudflare Origin private key for the frontend Nginx origin, supplied through Terraform variables or updated directly in SSM."
+  sensitive   = true
+}
+
+variable "nginx_origin_private_key_version" {
+  type        = number
+  description = "Increment when rotating nginx_origin_private_key because value_wo is write-only."
+  default     = 1
+}

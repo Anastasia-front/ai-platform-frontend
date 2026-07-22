@@ -10,3 +10,16 @@ resource "aws_ssm_parameter" "env_vars" {
   value = var.env_values[each.key]
 }
 
+resource "aws_ssm_parameter" "nginx_origin_certificate" {
+  name             = "/${var.project_name}-frontend/nginx/origin_certificate"
+  type             = "SecureString"
+  value_wo         = var.nginx_origin_certificate
+  value_wo_version = var.nginx_origin_certificate_version
+}
+
+resource "aws_ssm_parameter" "nginx_origin_private_key" {
+  name             = "/${var.project_name}-frontend/nginx/origin_private_key"
+  type             = "SecureString"
+  value_wo         = var.nginx_origin_private_key
+  value_wo_version = var.nginx_origin_private_key_version
+}

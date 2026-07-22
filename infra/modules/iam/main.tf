@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_role" "ec2_role" {
   name = "${var.project_name}-frontend-ec2-role"
 
@@ -21,17 +23,12 @@ resource "aws_iam_role_policy_attachment" "ecr" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-resource "aws_iam_role_policy_attachment" "ssm" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
-}
-
 resource "aws_iam_instance_profile" "profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-resource "aws_iam_policy" "ecr_push_access" {
-  name = "${var.project_name}-frontend-ecr-push-access"
+resource "aws_iam_policy" "ssm_parameter_read" {
+  name = "${var.project_name}-frontend-ssm-parameter-read"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -39,30 +36,21 @@ resource "aws_iam_policy" "ecr_push_access" {
       {
         Effect = "Allow"
         Action = [
-          "ecr:GetAuthorizationToken"
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
         ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload",
-          "ecr:PutImage",
-          "ecr:BatchGetImage",
-          "ecr:DescribeRepositories"
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}-frontend/*"
         ]
-        Resource = "arn:aws:ecr:${var.aws_region}:*:repository/${var.project_name}-frontend"
       }
     ]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "ecr_push_access" {
+resource "aws_iam_role_policy_attachment" "ssm_parameter_read" {
   role       = aws_iam_role.ec2_role.name
-  policy_arn = aws_iam_policy.ecr_push_access.arn
+  policy_arn = aws_iam_policy.ssm_parameter_read.arn
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_managed_instance_core" {
@@ -74,4 +62,3 @@ resource "aws_iam_role_policy_attachment" "cloudwatch_agent_server" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
-
