@@ -118,10 +118,13 @@ jobs:
             local parameter_name="\$1"
             local destination="\$2"
             local mode="\$3"
+            local marker_regex="\$4"
             local tmp_file
+            local tmp_destination
 
             tmp_file="\$(mktemp)"
-            trap 'rm -f "\$tmp_file"' RETURN
+            tmp_destination="\${destination}.tmp"
+            trap 'rm -f "\$tmp_file"; sudo rm -f "\$tmp_destination"' RETURN
             set +x
             aws ssm get-parameter \
               --name "\$parameter_name" \
@@ -129,7 +132,16 @@ jobs:
               --region "\$AWS_REGION" \
               --query 'Parameter.Value' \
               --output text > "\$tmp_file"
-            sudo install -o root -g root -m "\$mode" "\$tmp_file" "\$destination"
+            if [ ! -s "\$tmp_file" ]; then
+              echo "SSM parameter \$parameter_name returned an empty value" >&2
+              return 1
+            fi
+            if ! head -n 1 "\$tmp_file" | grep -Eq "\$marker_regex"; then
+              echo "SSM parameter \$parameter_name does not look like the expected PEM type" >&2
+              return 1
+            fi
+            sudo install -o root -g root -m "\$mode" "\$tmp_file" "\$tmp_destination"
+            sudo mv "\$tmp_destination" "\$destination"
             rm -f "\$tmp_file"
             trap - RETURN
           }
@@ -189,28 +201,35 @@ jobs:
             wait_for "Rollback frontend Nginx HTTPS" "curl -k --fail --silent --show-error --max-time 10 --resolve ai-automation-platform.com:443:127.0.0.1 https://ai-automation-platform.com/ >/dev/null"
           }
 
+          generate_env_file() {
+            local params_json
+
+            params_json="\$(mktemp)"
+            trap 'rm -f "\$params_json"' RETURN
+            aws ssm get-parameters-by-path \
+              --path "\$SSM_PARAMETER_PATH" \
+              --with-decryption \
+              --region "\$AWS_REGION" \
+              --recursive \
+              --output json > "\$params_json"
+
+            jq -r '.Parameters[] | select((.Name | contains("/nginx/")) | not) | if (.Value | test("[\\r\\n]")) then error("Refusing to write multiline SSM parameter to .env: " + .Name) else ((.Name | split("/") | last) + "=" + .Value) end' "\$params_json" > .env
+
+            rm -f "\$params_json"
+            trap - RETURN
+
+            if grep -Eq 'origin_certificate|origin_private_key|BEGIN CERTIFICATE|BEGIN PRIVATE KEY' .env; then
+              echo "Refusing to deploy because nginx secret material was written to .env" >&2
+              exit 1
+            fi
+          }
+
           mkdir -p "\$DEPLOY_DIR"
           cd "\$DEPLOY_DIR"
 
           install_jq
 
-          aws ssm get-parameters-by-path \
-            --path "\$SSM_PARAMETER_PATH" \
-            --with-decryption \
-            --region "\$AWS_REGION" \
-            --recursive \
-            --output json \
-            | jq -r '
-                .Parameters[]
-                | select((.Name | contains("/nginx/")) | not)
-                | .Name as $name
-                | .Value as $value
-                | if ($value | test("[\\r\\n]")) then
-                    error("Refusing to write multiline SSM parameter to .env: " + $name)
-                  else
-                    ($name | split("/") | last) + "=" + $value
-                  end
-              ' > .env
+          generate_env_file
 
           PREVIOUS_IMAGE="\$(docker inspect "\$CONTAINER_NAME" --format='{{.Config.Image}}' 2>/dev/null || true)"
           echo "\$PREVIOUS_IMAGE" > previous_image.txt
@@ -222,8 +241,8 @@ jobs:
 
           install_nginx
           sudo install -d -m 700 -o root -g root "\$SSL_DIR"
-          install_secret_file "\$CERT_PARAMETER" "\$CERT_PATH" 0644
-          install_secret_file "\$KEY_PARAMETER" "\$KEY_PATH" 0600
+          install_secret_file "\$CERT_PARAMETER" "\$CERT_PATH" 0644 '^-----BEGIN CERTIFICATE-----$'
+          install_secret_file "\$KEY_PARAMETER" "\$KEY_PATH" 0600 '^-----BEGIN (RSA |EC )?PRIVATE KEY-----$'
           install_nginx_config
 
           docker volume create "\$DATA_VOLUME" >/dev/null
