@@ -10,8 +10,13 @@ env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
   IMAGE_TAG: ${{ github.sha }}
-  CONTAINER_NAME: ai-platform-frontend
   SSM_PARAMETER_PATH: ${{ vars.SSM_PARAMETER_PATH }}
+  CONTAINER_NAME: ai-platform-frontend
+  PORT_MAPPING: 127.0.0.1:8001:8001
+  DATA_VOLUME: ai-platform-frontend-data
+  CERT_PARAMETER: /ai-platform-frontend/nginx/origin_certificate
+  KEY_PARAMETER: /ai-platform-frontend/nginx/origin_private_key
+  NGINX_SITE_NAME: ai-platform-frontend
 
 jobs:
   deploy:
@@ -30,91 +35,297 @@ jobs:
 
       - name: Login to Amazon ECR
         run: |
-          aws ecr get-login-password --region $AWS_REGION \
-          | docker login --username AWS --password-stdin $ECR_REGISTRY
+          aws ecr get-login-password --region "$AWS_REGION" \
+          | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
       - name: Build Docker image
         run: |
           docker build \
             --platform linux/amd64 \
-            -t $ECR_REPOSITORY:$IMAGE_TAG .
+            -t "$ECR_REPOSITORY:$IMAGE_TAG" .
 
       - name: Tag Docker image
         run: |
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG \
-            $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag "$ECR_REPOSITORY:$IMAGE_TAG" \
+            "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
       - name: Push Docker image
         run: |
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
       - name: Deploy to EC2 via SSM
         run: |
+          NGINX_CONF_BASE64="$(base64 -w 0 deploy/nginx/ai-platform-frontend.conf 2>/dev/null || base64 deploy/nginx/ai-platform-frontend.conf | tr -d '\n')"
+
+          cat > /tmp/deploy-frontend.sh <<REMOTE
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+
+          AWS_REGION="${AWS_REGION}"
+          ECR_REGISTRY="${ECR_REGISTRY}"
+          ECR_REPOSITORY="${ECR_REPOSITORY}"
+          IMAGE_TAG="${IMAGE_TAG}"
+          CONTAINER_NAME="${CONTAINER_NAME}"
+          PORT_MAPPING="${PORT_MAPPING}"
+          CANDIDATE_PORT_MAPPING="127.0.0.1:8002:8001"
+          DATA_VOLUME="${DATA_VOLUME}"
+          SSM_PARAMETER_PATH="${SSM_PARAMETER_PATH}"
+          CERT_PARAMETER="${CERT_PARAMETER}"
+          KEY_PARAMETER="${KEY_PARAMETER}"
+          NGINX_SITE_NAME="${NGINX_SITE_NAME}"
+          NGINX_CONF_BASE64="${NGINX_CONF_BASE64}"
+          NEXT_CONTAINER_NAME="${CONTAINER_NAME}-next"
+          DEPLOY_DIR="/home/ubuntu/ai-platform-frontend-deploy"
+          SSL_DIR="/etc/nginx/ssl"
+          CERT_PATH="\$SSL_DIR/frontend-origin.pem"
+          KEY_PATH="\$SSL_DIR/frontend-origin.key"
+          SITE_AVAILABLE="/etc/nginx/sites-available/\$NGINX_SITE_NAME"
+          SITE_ENABLED="/etc/nginx/sites-enabled/\$NGINX_SITE_NAME"
+
+          install_nginx() {
+            if command -v nginx >/dev/null 2>&1; then
+              return
+            fi
+
+            if command -v apt-get >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y nginx
+            elif command -v yum >/dev/null 2>&1; then
+              sudo yum install -y nginx
+            else
+              echo "No supported package manager found for installing nginx" >&2
+              exit 1
+            fi
+          }
+
+          install_jq() {
+            if command -v jq >/dev/null 2>&1; then
+              return
+            fi
+
+            if command -v apt-get >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y jq
+            elif command -v yum >/dev/null 2>&1; then
+              sudo yum install -y jq
+            else
+              echo "No supported package manager found for installing jq" >&2
+              exit 1
+            fi
+          }
+
+          install_secret_file() {
+            local parameter_name="\$1"
+            local destination="\$2"
+            local mode="\$3"
+            local tmp_file
+
+            tmp_file="\$(mktemp)"
+            trap 'rm -f "\$tmp_file"' RETURN
+            set +x
+            aws ssm get-parameter \
+              --name "\$parameter_name" \
+              --with-decryption \
+              --region "\$AWS_REGION" \
+              --query 'Parameter.Value' \
+              --output text > "\$tmp_file"
+            sudo install -o root -g root -m "\$mode" "\$tmp_file" "\$destination"
+            rm -f "\$tmp_file"
+            trap - RETURN
+          }
+
+          install_nginx_config() {
+            echo "\$NGINX_CONF_BASE64" | base64 -d > "\$DEPLOY_DIR/\$NGINX_SITE_NAME.conf"
+            sudo install -d -m 755 -o root -g root /etc/nginx/sites-available /etc/nginx/sites-enabled
+            sudo install -o root -g root -m 0644 "\$DEPLOY_DIR/\$NGINX_SITE_NAME.conf" "\$SITE_AVAILABLE"
+            sudo ln -sfn "\$SITE_AVAILABLE" "\$SITE_ENABLED"
+            sudo rm -f /etc/nginx/sites-enabled/default
+            sudo nginx -t
+          }
+
+          wait_for() {
+            local description="\$1"
+            local command="\$2"
+            local log_container="\${3:-\$CONTAINER_NAME}"
+
+            for i in \$(seq 1 20); do
+              echo "\$description check attempt \$i..."
+              if bash -c "\$command"; then
+                echo "\$description is healthy"
+                return 0
+              fi
+              docker logs --tail=50 "\$log_container" || true
+              sleep 3
+            done
+
+            echo "\$description check failed" >&2
+            return 1
+          }
+
+          restore_previous_container() {
+            local previous_image
+            previous_image="\$(cat previous_image.txt)"
+            if [ -z "\$previous_image" ]; then
+              echo "No previous image available for rollback" >&2
+              return 1
+            fi
+
+            docker stop "\$CONTAINER_NAME" || true
+            docker rm "\$CONTAINER_NAME" || true
+            docker stop "\$NEXT_CONTAINER_NAME" || true
+            docker rm "\$NEXT_CONTAINER_NAME" || true
+            docker run -d \
+              --name "\$CONTAINER_NAME" \
+              --env-file .env \
+              -e SQLITE_PATH=/app/data/db.sqlite3 \
+              -v "\$DATA_VOLUME:/app/data" \
+              -p "\$PORT_MAPPING" \
+              --restart unless-stopped \
+              "\$previous_image"
+            wait_for "Rollback frontend container" "curl --fail --silent --show-error --max-time 10 http://127.0.0.1:8001/login/ >/dev/null"
+            sudo nginx -t
+            sudo systemctl enable nginx
+            sudo systemctl restart nginx
+            wait_for "Rollback frontend Nginx HTTPS" "curl -k --fail --silent --show-error --max-time 10 --resolve ai-automation-platform.com:443:127.0.0.1 https://ai-automation-platform.com/ >/dev/null"
+          }
+
+          mkdir -p "\$DEPLOY_DIR"
+          cd "\$DEPLOY_DIR"
+
+          install_jq
+
+          aws ssm get-parameters-by-path \
+            --path "\$SSM_PARAMETER_PATH" \
+            --with-decryption \
+            --region "\$AWS_REGION" \
+            --recursive \
+            --output json \
+            | jq -r '
+                .Parameters[]
+                | select((.Name | contains("/nginx/")) | not)
+                | .Name as $name
+                | .Value as $value
+                | if ($value | test("[\\r\\n]")) then
+                    error("Refusing to write multiline SSM parameter to .env: " + $name)
+                  else
+                    ($name | split("/") | last) + "=" + $value
+                  end
+              ' > .env
+
+          PREVIOUS_IMAGE="\$(docker inspect "\$CONTAINER_NAME" --format='{{.Config.Image}}' 2>/dev/null || true)"
+          echo "\$PREVIOUS_IMAGE" > previous_image.txt
+
+          aws ecr get-login-password --region "\$AWS_REGION" \
+          | docker login --username AWS --password-stdin "\$ECR_REGISTRY"
+
+          docker pull "\$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG"
+
+          install_nginx
+          sudo install -d -m 700 -o root -g root "\$SSL_DIR"
+          install_secret_file "\$CERT_PARAMETER" "\$CERT_PATH" 0644
+          install_secret_file "\$KEY_PARAMETER" "\$KEY_PATH" 0600
+          install_nginx_config
+
+          docker volume create "\$DATA_VOLUME" >/dev/null
+
+          docker run --rm \
+            --env-file .env \
+            -e SQLITE_PATH=/app/data/db.sqlite3 \
+            -v "\$DATA_VOLUME:/app/data" \
+            "\$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG" \
+            python manage.py migrate --noinput
+
+          docker stop "\$NEXT_CONTAINER_NAME" || true
+          docker rm "\$NEXT_CONTAINER_NAME" || true
+
+          docker run -d \
+            --name "\$NEXT_CONTAINER_NAME" \
+            --env-file .env \
+            -e SQLITE_PATH=/app/data/db.sqlite3 \
+            -v "\$DATA_VOLUME:/app/data" \
+            -p "\$CANDIDATE_PORT_MAPPING" \
+            --restart unless-stopped \
+            "\$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG"
+
+          if ! wait_for "Frontend candidate container" "curl --fail --silent --show-error --max-time 10 http://127.0.0.1:8002/login/ >/dev/null" "\$NEXT_CONTAINER_NAME"; then
+            docker ps -a
+            docker logs --tail=100 "\$NEXT_CONTAINER_NAME" || true
+            FAILED_IMAGE="\$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG"
+            docker stop "\$NEXT_CONTAINER_NAME" || true
+            docker rm "\$NEXT_CONTAINER_NAME" || true
+            docker image rm "\$FAILED_IMAGE" || true
+            exit 1
+          fi
+
+          docker stop "\$CONTAINER_NAME" || true
+          docker rm "\$CONTAINER_NAME" || true
+          docker stop "\$NEXT_CONTAINER_NAME"
+          docker rm "\$NEXT_CONTAINER_NAME"
+
+          docker run -d \
+            --name "\$CONTAINER_NAME" \
+            --env-file .env \
+            -e SQLITE_PATH=/app/data/db.sqlite3 \
+            -v "\$DATA_VOLUME:/app/data" \
+            -p "\$PORT_MAPPING" \
+            --restart unless-stopped \
+            "\$ECR_REGISTRY/\$ECR_REPOSITORY:\$IMAGE_TAG"
+
+          if ! wait_for "Frontend container" "curl --fail --silent --show-error --max-time 10 http://127.0.0.1:8001/login/ >/dev/null"; then
+            echo "Final frontend container failed after cutover. Restoring previous image..." >&2
+            restore_previous_container
+            exit 1
+          fi
+
+          sudo nginx -t
+          sudo systemctl enable nginx
+          if ! sudo systemctl restart nginx; then
+            echo "Nginx failed to restart after container cutover. Restoring previous image..." >&2
+            restore_previous_container
+            exit 1
+          fi
+
+          if ! wait_for "Frontend Nginx HTTP" "curl --fail --silent --show-error --max-time 10 --resolve ai-automation-platform.com:80:127.0.0.1 http://ai-automation-platform.com/ >/dev/null"; then
+            echo "Nginx HTTP verification failed after container cutover. Restoring previous image..." >&2
+            restore_previous_container
+            exit 1
+          fi
+          if ! wait_for "Frontend Nginx HTTPS" "curl -k --fail --silent --show-error --max-time 10 --resolve ai-automation-platform.com:443:127.0.0.1 https://ai-automation-platform.com/ >/dev/null"; then
+            echo "Nginx verification failed after container cutover. Restoring previous image..." >&2
+            restore_previous_container
+            exit 1
+          fi
+
+          docker image prune -f
+          REMOTE
+
+          jq -n --arg cmd "$(cat /tmp/deploy-frontend.sh)" '{commands:[$cmd],executionTimeout:["1800"]}' > /tmp/ssm-frontend-parameters.json
+
           COMMAND_ID=$(aws ssm send-command \
-            --region $AWS_REGION \
+            --region "$AWS_REGION" \
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --comment "Deploy ai-platform frontend" \
+            --comment "Deploy ai-platform frontend with nginx origin TLS" \
             --timeout-seconds 1800 \
-            --parameters 'commands=[
-              "set -e",
-              "AWS_REGION=${{ env.AWS_REGION }}",
-              "ECR_REGISTRY=${{ env.ECR_REGISTRY }}",
-              "ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}",
-              "IMAGE_TAG=${{ github.sha }}",
-              "CONTAINER_NAME=${{ env.CONTAINER_NAME }}",
-              "SSM_PARAMETER_PATH=${{ env.SSM_PARAMETER_PATH }}",
-              "DEPLOY_DIR=/home/ubuntu/ai-platform-frontend-deploy",
-              "mkdir -p $DEPLOY_DIR",
-              "cd $DEPLOY_DIR",
-
-              "aws ssm get-parameters-by-path --path $SSM_PARAMETER_PATH --with-decryption --region $AWS_REGION --recursive --query \"Parameters[*].[Name,Value]\" --output text | awk -F\"\t\" '\''{split($1,a,\"/\"); print a[length(a)]\"=\"$2}'\'' > .env",
-
-              "PREVIOUS_IMAGE=$(docker inspect $CONTAINER_NAME --format='\''{{.Config.Image}}'\'' 2>/dev/null || true)",
-              "echo \"$PREVIOUS_IMAGE\" > previous_image.txt",
-
-              "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY",
-
-              "docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
-
-              "docker run --rm --env-file .env $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG python manage.py migrate --noinput",
-
-              "docker stop $CONTAINER_NAME || true",
-              "docker rm $CONTAINER_NAME || true",
-
-              "docker run -d --name $CONTAINER_NAME --env-file .env -p 80:8001 --restart unless-stopped $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
-
-              "for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://localhost/health/ && echo Frontend is healthy && docker image prune -f && exit 0 || true; echo Waiting for frontend...; sleep 3; done",
-
-              "docker ps -a",
-              "docker logs --tail=100 $CONTAINER_NAME || true",
-              "echo Deployment failed. Rolling back...",
-              "FAILED_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
-              "PREVIOUS_IMAGE=$(cat previous_image.txt)",
-              "if [ -n \"$PREVIOUS_IMAGE\" ]; then docker stop $CONTAINER_NAME || true; docker rm $CONTAINER_NAME || true; docker run -d --name $CONTAINER_NAME --env-file .env -p 80:8001 --restart unless-stopped \"$PREVIOUS_IMAGE\"; fi",
-              "docker image rm \"$FAILED_IMAGE\" || true",
-              "docker image prune -a -f --filter \"until=72h\" || true",
-              "docker logs --tail=100 $CONTAINER_NAME || true",
-              "exit 1"
-            ],executionTimeout=["1800"]' \
+            --parameters file:///tmp/ssm-frontend-parameters.json \
             --query "Command.CommandId" \
             --output text)
 
           echo "Command ID: $COMMAND_ID"
 
           aws ssm wait command-executed \
-            --region $AWS_REGION \
+            --region "$AWS_REGION" \
             --command-id "$COMMAND_ID" \
             --instance-id "${{ secrets.EC2_INSTANCE_ID }}" || true
 
           aws ssm get-command-invocation \
-            --region $AWS_REGION \
+            --region "$AWS_REGION" \
             --command-id "$COMMAND_ID" \
             --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
             --query "{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}"
 
           STATUS=$(aws ssm get-command-invocation \
-            --region $AWS_REGION \
+            --region "$AWS_REGION" \
             --command-id "$COMMAND_ID" \
             --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
             --query "Status" \
