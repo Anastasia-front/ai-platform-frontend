@@ -67,10 +67,66 @@ backend.
 
 The GitHub Actions workflow in `.github/workflows/deploy.yml` builds the
 frontend Docker image, pushes it to ECR, then deploys to EC2 through SSM.
-The production container starts with Gunicorn on container port `8001`; local
-development can continue to use Django's `runserver` command.
+The production container starts with Gunicorn on container port `8001` and is
+published only on EC2 loopback with:
+
+```text
+127.0.0.1:8001:8001
+```
+
 Keep `localhost` and `127.0.0.1` in production `ALLOWED_HOSTS` because the EC2
-deployment health check calls `http://localhost/health/`.
+deployment health check calls `http://127.0.0.1:8001/login/` with
+`Host: 127.0.0.1`. The deployment also mounts
+`ai-platform-frontend-data:/app/data` and sets `SQLITE_PATH=/app/data/db.sqlite3`
+so SQLite migration state persists across replacement containers and rollback.
+
+## Production Nginx and Cloudflare
+
+Nginx runs on the EC2 host and proxies public traffic to the private Docker
+binding at `http://127.0.0.1:8001`. Use the repository-managed config at
+`deploy/nginx/ai-platform-frontend.conf`:
+
+```bash
+sudo cp deploy/nginx/ai-platform-frontend.conf /etc/nginx/sites-available/ai-platform-frontend
+sudo ln -sfn /etc/nginx/sites-available/ai-platform-frontend /etc/nginx/sites-enabled/ai-platform-frontend
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Cloudflare DNS should point the public hostnames to the EC2 public IPv4 address:
+
+```text
+Type: A      Name: @    Content: <EC2 public IPv4>       Proxy status: Proxied
+Type: CNAME  Name: www  Target: ai-automation-platform.com  Proxy status: Proxied
+```
+
+Prefer Cloudflare SSL mode `Full (strict)`. Install either a public certificate
+with Let's Encrypt/Certbot or a Cloudflare Origin Certificate on Nginx; do not
+commit certificate private keys. Avoid Cloudflare `Flexible` because it can
+create redirect loops and leaves Cloudflare-to-origin traffic unencrypted.
+
+The EC2 security group should allow inbound TCP `80` and `443` to Nginx, and SSH
+only from approved CIDR ranges. Do not open public inbound `8000` or `8001`; the
+Docker container is reachable only from the host through loopback.
+
+Production SSM environment values should include:
+
+```env
+DEBUG=False
+ALLOWED_HOSTS=127.0.0.1,localhost,ai-automation-platform.com,www.ai-automation-platform.com
+CSRF_TRUSTED_ORIGINS=https://ai-automation-platform.com,https://www.ai-automation-platform.com
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+SQLITE_PATH=/app/data/db.sqlite3
+```
+
+Useful production checks:
+
+```bash
+curl -i -H "Host: 127.0.0.1" http://127.0.0.1:8001/login/
+curl -i -H "Host: ai-automation-platform.com" http://127.0.0.1/health/
+curl -I https://ai-automation-platform.com/health/
+```
 
 Required GitHub secrets:
 
