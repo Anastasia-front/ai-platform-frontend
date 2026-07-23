@@ -4,11 +4,17 @@
 <div class="app-shell">
     <div class="sidebar-hover-zone" data-sidebar-hover-zone aria-hidden="true"></div>
     <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Close sidebar" aria-expanded="true">
-        <svg class="sidebar-toggle-icon sidebar-toggle-close" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+        <svg class="sidebar-toggle-icon sidebar-toggle-close sidebar-toggle-desktop-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
             <path d="m15 6-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <svg class="sidebar-toggle-icon sidebar-toggle-open" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+        <svg class="sidebar-toggle-icon sidebar-toggle-open sidebar-toggle-desktop-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
             <path d="m9 6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg class="sidebar-toggle-icon sidebar-toggle-close sidebar-toggle-mobile-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="m18 15-6-6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg class="sidebar-toggle-icon sidebar-toggle-open sidebar-toggle-mobile-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
     </button>
     <aside class="sidebar" aria-label="Workspace navigation">
@@ -71,7 +77,7 @@
             <a href="{% url 'dashboard:workflows' %}" {% if current_url_name == 'workflows' %}class="active"{% endif %}>Workflows</a>
             <a href="{% url 'dashboard:executions' %}" {% if current_url_name == 'executions' or current_url_name == 'execution_detail' %}class="active"{% endif %}>Executions / Logs</a>
             <a href="{% url 'dashboard:guide' %}" {% if current_url_name == 'guide' %}class="active"{% endif %}>Guideline / Help</a>
-            <a href="{% url 'dashboard:settings' %}" {% if current_url_name == 'settings' %}class="active"{% endif %}>Settings</a>
+            <a href="{% url 'dashboard:settings' %}" {% if current_url_name == 'settings' %}class="active"{% endif %}>Docs / Backend map</a>
             <a href="{% url 'dashboard:logout' %}">Logout</a>
         </nav>
         <div class="sidebar-resizer" data-sidebar-resizer role="separator" aria-orientation="vertical" aria-label="Resize sidebar"></div>
