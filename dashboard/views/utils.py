@@ -682,6 +682,7 @@ def app_context(
             projects_error = exc.message
 
     return {
+        "api_docs_url": backend_api.API_DOCS_URL,
         "backend_api_url": backend_api.BASE_API_URL,
         "current_user": request.session.get("user"),
         "projects": projects_payload,

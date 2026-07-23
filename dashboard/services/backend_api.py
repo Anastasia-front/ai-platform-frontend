@@ -8,6 +8,10 @@ BASE_API_URL = os.getenv(
     'BASE_API_URL',
     getattr(settings, 'BASE_API_URL', 'http://localhost:8000'),
 ).rstrip('/')
+API_DOCS_URL = os.getenv(
+    'API_DOCS_URL',
+    getattr(settings, 'API_DOCS_URL', f'{BASE_API_URL}/docs'),
+).rstrip('/')
 REQUEST_TIMEOUT = 30
 WORKFLOW_TIMEOUT = 180
 REQUEST_TIMEOUT = int(getattr(settings, 'BACKEND_REQUEST_TIMEOUT', REQUEST_TIMEOUT))
