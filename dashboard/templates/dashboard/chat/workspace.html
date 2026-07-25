@@ -84,41 +84,45 @@
             </section>
 
             <aside class="documents-panel">
-                <h2>Documents</h2>
-                <form method="post" action="{% url 'dashboard:upload_document' active_project.slug %}" enctype="multipart/form-data" class="upload-form" data-upload-form data-loading-form>
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                    <label class="file-picker">
-                        <span>Choose file</span>
-                        <input type="file" name="file" required multiple data-file-input>
-                    </label>
-                    <ul class="selected-file-list" data-file-list hidden></ul>
-                    <p class="file-status" data-file-status>No file chosen</p>
-                    <button type="submit" data-upload-button data-loading-label="Uploading..." disabled>Upload</button>
-                </form>
+                <details class="documents-accordion">
+                    <summary><h2>Documents</h2></summary>
+                    <div class="documents-content">
+                        <form method="post" action="{% url 'dashboard:upload_document' active_project.slug %}" enctype="multipart/form-data" class="upload-form" data-upload-form data-loading-form>
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <label class="file-picker">
+                                <span>Choose file</span>
+                                <input type="file" name="file" required multiple data-file-input>
+                            </label>
+                            <ul class="selected-file-list" data-file-list hidden></ul>
+                            <p class="file-status" data-file-status>No file chosen</p>
+                            <button type="submit" data-upload-button data-loading-label="Uploading..." disabled>Upload</button>
+                        </form>
 
-                {% if documents %}
-                    <div class="document-list">
-                        {% for document in documents %}
-                            <article class="document-row" data-document-row data-document-id="{{ document.id }}">
-                                <div>
-                                    <strong>{{ document.filename }}</strong>
-                                    {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
-                                </div>
-                                <div class="document-actions">
-                                    {% include "dashboard/partials/document_actions.html" with project_slug=active_project.slug %}
-                                    <form method="post" action="{% url 'dashboard:delete_document' active_project.slug document.id %}">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                        <button type="submit" class="link-danger">Delete</button>
-                                    </form>
-                                </div>
-                            </article>
-                        {% endfor %}
+                        {% if documents %}
+                            <div class="document-list">
+                                {% for document in documents %}
+                                    <article class="document-row" data-document-row data-document-id="{{ document.id }}">
+                                        <div>
+                                            <strong>{{ document.filename }}</strong>
+                                            {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
+                                        </div>
+                                        <div class="document-actions">
+                                            {% include "dashboard/partials/document_actions.html" with project_slug=active_project.slug %}
+                                            <form method="post" action="{% url 'dashboard:delete_document' active_project.slug document.id %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                                <button type="submit" class="link-danger">Delete</button>
+                                            </form>
+                                        </div>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="muted">No documents uploaded.</p>
+                        {% endif %}
                     </div>
-                {% else %}
-                    <p class="muted">No documents uploaded.</p>
-                {% endif %}
+                </details>
             </aside>
         </div>
     {% endif %}
