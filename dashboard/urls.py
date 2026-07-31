@@ -178,6 +178,11 @@ urlpatterns = [
         views.execution_status_partial,
         name='execution_status_partial',
     ),
+    path(
+        'executions/<int:run_id>/content/',
+        views.execution_content_partial,
+        name='execution_content_partial',
+    ),
     path('guide/', views.guide, name='guide'),
     path('settings/', views.settings_function, name='settings'),
 ]

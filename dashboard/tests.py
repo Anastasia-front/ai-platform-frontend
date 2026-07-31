@@ -50,13 +50,14 @@ class HealthEndpointTests(TestCase):
 
 class TemplateFilterTests(TestCase):
     def test_human_datetime_formats_iso_timestamp(self):
-        self.assertEqual(
-            human_datetime("2026-07-10T11:49:52.231888Z"),
-            "10/07/2026 - 11:49",
-        )
+        rendered = human_datetime("2026-07-10T11:49:52.231888Z")
+        self.assertIn('datetime="2026-07-10T11:49:52.231888+00:00"', rendered)
+        self.assertIn(">10/07/2026 - 11:49<", rendered)
 
     def test_human_datetime_formats_date_only_value(self):
-        self.assertEqual(human_datetime("2026-07-05"), "05/07/2026 - 00:00")
+        rendered = human_datetime("2026-07-05")
+        self.assertIn('datetime="2026-07-05T00:00:00+00:00"', rendered)
+        self.assertIn(">05/07/2026 - 00:00<", rendered)
 
     def test_truncate_chars_caps_text_with_ellipsis(self):
         self.assertEqual(truncate_chars("abcdefghij", 8), "abcde...")
@@ -582,6 +583,42 @@ class ProviderViewTests(TestCase):
 
     @patch("dashboard.views.backend_api.list_project_documents")
     @patch("dashboard.views.backend_api.get_providers")
+    @patch("dashboard.views.backend_api.update_chat_provider_defaults")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_update_chat_provider_htmx_request_returns_fragment_not_redirect(
+        self,
+        mock_list_projects,
+        mock_update_chat_provider_defaults,
+        mock_get_providers,
+        mock_list_project_documents,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_get_providers.return_value = provider_payload()
+        mock_list_project_documents.return_value = []
+
+        response = self.client.post(
+            reverse("dashboard:update_chat_provider"),
+            {
+                "provider": "groq",
+                "model": "llama-3.1",
+                "fallback_model": "",
+                "base_url": "https://api.groq.com/openai/v1",
+                "api_key": "secret-key",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="chat-defaults-form"')
+        self.assertContains(response, 'id="flash-stack"')
+        self.assertContains(response, "Chat provider defaults saved.")
+        # The embedding form's own markup must still be present in the full
+        # rendered page even though hx-select will only pull out the chat
+        # form fragment -- htmx never touches the embedding form's DOM.
+        self.assertContains(response, 'id="embedding-defaults-form"')
+
+    @patch("dashboard.views.backend_api.list_project_documents")
+    @patch("dashboard.views.backend_api.get_providers")
     @patch("dashboard.views.backend_api.rebuild_document_embeddings")
     @patch("dashboard.views.backend_api.get_document")
     @patch("dashboard.views.backend_api.list_projects")
@@ -972,6 +1009,57 @@ class WorkflowViewTests(TestCase):
     @patch("dashboard.views.backend_api.list_workflow_run_events")
     @patch("dashboard.views.backend_api.get_workflow_run")
     @patch("dashboard.views.backend_api.list_projects")
+    def test_execution_detail_shows_delete_button_for_completed_run(
+        self, mock_list_projects, mock_get_workflow_run, mock_list_events
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_get_workflow_run.return_value = {
+            "id": 96,
+            "workflow_id": 111,
+            "workflow_name": "Workflow",
+            "status": "completed",
+            "created_at": "2026-07-28T13:26:52Z",
+            "input": "run the workflow",
+            "output": "Some output.",
+        }
+        mock_list_events.return_value = []
+
+        response = self.client.get(reverse("dashboard:execution_detail", args=[96]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, reverse("dashboard:delete_execution", args=[96])
+        )
+        self.assertContains(response, "Delete this execution permanently?")
+
+    @patch("dashboard.views.backend_api.list_workflow_run_events")
+    @patch("dashboard.views.backend_api.get_workflow_run")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_execution_detail_hides_delete_button_while_run_is_active(
+        self, mock_list_projects, mock_get_workflow_run, mock_list_events
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_get_workflow_run.return_value = {
+            "id": 97,
+            "workflow_id": 111,
+            "workflow_name": "Workflow",
+            "status": "running",
+            "created_at": "2026-07-28T13:26:52Z",
+            "input": "run the workflow",
+            "output": "",
+        }
+        mock_list_events.return_value = []
+
+        response = self.client.get(reverse("dashboard:execution_detail", args=[97]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(
+            response, reverse("dashboard:delete_execution", args=[97])
+        )
+
+    @patch("dashboard.views.backend_api.list_workflow_run_events")
+    @patch("dashboard.views.backend_api.get_workflow_run")
+    @patch("dashboard.views.backend_api.list_projects")
     def test_execution_detail_renders_all_resume_screening_files(
         self, mock_list_projects, mock_get_workflow_run, mock_list_events
     ):
@@ -1054,6 +1142,65 @@ class WorkflowViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "contract-result-grid")
+
+    @patch("dashboard.views.backend_api.list_workflow_run_events")
+    @patch("dashboard.views.backend_api.get_workflow_run")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_execution_content_partial_reflects_current_backend_state(
+        self, mock_list_projects, mock_get_workflow_run, mock_list_events
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_get_workflow_run.return_value = {
+            "id": 96,
+            "workflow_id": 111,
+            "workflow_name": "Workflow",
+            "status": "completed",
+            "created_at": "2026-07-28T13:26:52Z",
+            "input": "run the workflow using the gmail_thread_large.txt file",
+            "output": "Thread summary output.",
+        }
+        mock_list_events.return_value = [
+            {
+                "event_type": "workflow_done",
+                "created_at": "2026-07-28T13:26:53Z",
+                "payload": {"output": "Thread summary output."},
+            }
+        ]
+
+        response = self.client.get(
+            reverse("dashboard:execution_content_partial", args=[96])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Thread summary output.")
+        self.assertContains(response, "workflow_done")
+        # Terminal status: the polling container must not re-arm hx-trigger.
+        self.assertNotContains(response, "hx-trigger")
+
+    @patch("dashboard.views.backend_api.list_workflow_run_events")
+    @patch("dashboard.views.backend_api.get_workflow_run")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_execution_content_partial_keeps_polling_while_active(
+        self, mock_list_projects, mock_get_workflow_run, mock_list_events
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_get_workflow_run.return_value = {
+            "id": 96,
+            "workflow_id": 111,
+            "workflow_name": "Workflow",
+            "status": "running",
+            "created_at": "2026-07-28T13:26:52Z",
+            "input": "run the workflow using the gmail_thread_large.txt file",
+            "output": "",
+        }
+        mock_list_events.return_value = []
+
+        response = self.client.get(
+            reverse("dashboard:execution_content_partial", args=[96])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "hx-trigger")
 
     @patch("dashboard.views.backend_api.create_workflow_step")
     @patch("dashboard.views.backend_api.list_workflow_steps")
