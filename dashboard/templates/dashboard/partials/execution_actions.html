@@ -3,7 +3,9 @@
         <form method="post" action="{% url 'dashboard:cancel_execution' workflow_run.id %}" data-loading-form>
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
-            <button type="submit" class="danger-button" data-loading-label="Stopping...">Stop</button>
+            {% if workflow_run.status != 'completed' %}
+                <button type="submit" class="danger-button" data-loading-label="Stopping...">Stop</button>
+            {% endif %}
         </form>
     {% elif workflow_run.status == "failed" or workflow_run.status == "paused" or workflow_run.status == "canceled" or workflow_run.status == "cancelled" %}
         {% if workflow_run.status == "failed" or workflow_run.status == "paused" or workflow_run.status == "canceled" or workflow_run.status == "cancelled" %}
@@ -23,6 +25,13 @@
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
             <button type="submit" class="secondary" data-loading-label="Retrying...">Retry</button>
+        </form>
+    {% endif %}
+    {% if workflow_run.status == "completed" or workflow_run.status == "failed" or workflow_run.status == "paused" or workflow_run.status == "canceled" or workflow_run.status == "cancelled" %}
+        <form method="post" action="{% url 'dashboard:delete_execution' workflow_run.id %}" data-loading-form data-confirm-message="Delete this execution permanently? This action cannot be undone.">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'dashboard:executions' %}">
+            <button type="submit" class="danger-button" data-loading-label="Deleting...">Delete</button>
         </form>
     {% endif %}
 {% endif %}

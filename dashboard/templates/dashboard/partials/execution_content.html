@@ -1,0 +1,171 @@
+{% load markdown_extras %}
+<div id="execution-content-{{ workflow_run.id }}"
+    {% if workflow_run.status in active_run_statuses %}
+    hx-get="{% url 'dashboard:execution_content_partial' run_id=workflow_run.id %}"
+    hx-trigger="every 3s"
+    hx-swap="outerHTML"
+    {% endif %}
+>
+    <div class="execution-summary-grid">
+        <div>
+            <article class="contract-result-card">
+                <span>Status</span>
+                {% include "dashboard/partials/execution_status.html" %}
+            </article>
+            <article class="contract-result-card">
+                <span>Events</span>
+                <strong>{{ workflow_run_summary.event_count }}</strong>
+            </article>
+        </div>
+        {% if workflow_run_summary.template_type == "job-vacancy" %}
+        <article class="contract-result-card risk-card">
+            <span>Match score</span>
+            <strong>{{ workflow_run_summary.structured.score }}</strong>
+        </article>
+        <article class="contract-result-card wide summary-card">
+            <span>Comparison summary</span>
+            <div class="rich-text">{{ workflow_run_summary.structured.comparison|render_markdown }}</div>
+        </article>
+        <article class="contract-result-card wide">
+            <span>Strong matches</span>
+            {% if workflow_run_summary.structured.strong_matches %}
+            <div class="date-list">
+                {% for item in workflow_run_summary.structured.strong_matches %}
+                <div>
+                    <strong>{{ item.area }}</strong>
+                    {% if item.details %}<div class="rich-text">{{ item.details|render_markdown }}</div>{% endif %}
+                    {% if item.evidence %}<em>{{ item.evidence }}</em>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No structured strong matches were found in this run output.</p>
+            {% endif %}
+        </article>
+        <article class="contract-result-card wide">
+            <span>Missing requirements</span>
+            {% if workflow_run_summary.structured.missing_requirements %}
+            <div class="date-list">
+                {% for item in workflow_run_summary.structured.missing_requirements %}
+                <div>
+                    <strong>{{ item.area }}</strong>
+                    {% if item.details %}<div class="rich-text">{{ item.details|render_markdown }}</div>{% endif %}
+                    {% if item.evidence %}<em>{{ item.evidence }}</em>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No structured missing requirements were found in this run output.</p>
+            {% endif %}
+        </article>
+        <article class="contract-result-card wide summary-card">
+            <span>Seniority alignment</span>
+            <strong>{{ workflow_run_summary.structured.seniority_alignment.alignment|default:"Not specified" }}</strong>
+            <div class="rich-text">{{ workflow_run_summary.structured.seniority_alignment.details|default:"No seniority alignment returned."|render_markdown }}</div>
+            {% if workflow_run_summary.structured.seniority_alignment.evidence %}
+            <em>{{ workflow_run_summary.structured.seniority_alignment.evidence }}</em>
+            {% endif %}
+        </article>
+        <article class="contract-result-card wide summary-card">
+            <span>Cover letter</span>
+            <div class="rich-text">{{ workflow_run_summary.structured.cover_letter|render_markdown }}</div>
+        </article>
+        <article class="contract-result-card wide summary-card">
+            <span>Application note</span>
+            <div class="rich-text">{{ workflow_run_summary.structured.application_note|render_markdown }}</div>
+        </article>
+        {% endif %}
+        {% if workflow_run_summary.template_type == "contract-review" %}
+        <article class="contract-result-card wide summary-card">
+            <span>Summary</span>
+            <div class="rich-text">{{ workflow_run_summary.structured.summary|render_markdown }}</div>
+        </article>
+        <article class="contract-result-card risk-card">
+            <span>Risk level</span>
+            <strong>{{ workflow_run_summary.structured.risk_level }}</strong>
+        </article>
+        <article class="contract-result-card wide">
+            <span>Extracted dates</span>
+            {% if workflow_run_summary.structured.key_dates %}
+            <div class="date-list">
+                {% for item in workflow_run_summary.structured.key_dates %}
+                <div>
+                    <strong>{{ item.name }}</strong>
+                    <em>{{ item.date }}</em>
+                    {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No structured dates were found in this run output.</p>
+            {% endif %}
+        </article>
+        {% endif %}
+        {% if workflow_run_summary.template_type != "job-vacancy" and workflow_run_summary.template_type != "contract-review" %}
+        {% if workflow_run_summary.rows %}
+        {% for row in workflow_run_summary.rows %}
+        <article class="contract-result-card {% if row.type == 'text' %}wide summary-card{% endif %}">
+            <span>{{ row.label }}</span>
+            {% if row.type == 'text' %}
+            <div class="rich-text">{{ row.value|render_markdown }}</div>
+            {% elif row.type == 'list' %}
+            <ul>
+                {% for item in row.items %}<li><div class="rich-text">{{ item|render_markdown }}</div></li>{% endfor %}
+            </ul>
+            {% elif row.type == 'list_of_dicts' %}
+            <div class="date-list">
+                {% for item in row.items %}
+                <div>
+                    {% for field_key, field_value in item.items %}
+                    <strong>{{ field_key }}:</strong>
+                    <div class="rich-text">{{ field_value|render_markdown }}</div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            {% elif row.type == 'dict' %}
+            <div>
+                {% for field_key, field_value in row.items.items %}
+                <strong>{{ field_key }}:</strong>
+                <div class="rich-text">{{ field_value|render_markdown }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
+        {% else %}
+        <article class="contract-result-card wide summary-card">
+            <span>Result</span>
+            <p>No structured result fields were found for this run.</p>
+        </article>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <details class="execution-detail-panel">
+        <summary>Run input</summary>
+        <pre>{{ workflow_run.input }}</pre>
+    </details>
+
+    <details class="execution-detail-panel">
+        <summary>Run output</summary>
+        <pre>{{ workflow_run.output|default:"No output returned." }}</pre>
+    </details>
+
+    <details class="execution-detail-panel">
+        <summary>Events</summary>
+        {% if workflow_events %}
+        <div class="execution-event-list">
+            {% for event in workflow_events %}
+            <article>
+                <strong>{{ event.event_type }}</strong>
+                <span>{{ event.created_at|human_datetime }}</span>
+                <pre>{{ event.payload }}</pre>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted">No events were recorded for this run.</p>
+        {% endif %}
+    </details>
+</div>

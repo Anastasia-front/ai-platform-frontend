@@ -84,7 +84,7 @@
             </section>
 
             <aside class="documents-panel">
-                <details class="documents-accordion">
+                <details class="documents-accordion" open>
                     <summary><h2>Documents</h2></summary>
                     <div class="documents-content">
                         <form method="post" action="{% url 'dashboard:upload_document' active_project.slug %}" enctype="multipart/form-data" class="upload-form" data-upload-form data-loading-form>

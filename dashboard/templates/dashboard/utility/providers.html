@@ -95,7 +95,12 @@
         {% endif %}
 
         <div class="provider-control-grid">
-            <form method="post" action="{% url 'dashboard:update_chat_provider' %}" class="provider-form" data-provider-form="chat">
+            <form id="chat-defaults-form" method="post" action="{% url 'dashboard:update_chat_provider' %}" class="provider-form" data-provider-form="chat"
+                hx-post="{% url 'dashboard:update_chat_provider' %}"
+                hx-select="#chat-defaults-form"
+                hx-target="#chat-defaults-form"
+                hx-swap="outerHTML"
+                data-loading-form>
                 {% csrf_token %}
                 <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
                 <h2>Chat Defaults</h2>
@@ -127,7 +132,12 @@
                 <button type="submit">Save Chat Defaults</button>
             </form>
 
-            <form method="post" action="{% url 'dashboard:update_embedding_provider' %}" class="provider-form" data-provider-form="embedding">
+            <form id="embedding-defaults-form" method="post" action="{% url 'dashboard:update_embedding_provider' %}" class="provider-form" data-provider-form="embedding"
+                hx-post="{% url 'dashboard:update_embedding_provider' %}"
+                hx-select="#embedding-defaults-form"
+                hx-target="#embedding-defaults-form"
+                hx-swap="outerHTML"
+                data-loading-form>
                 {% csrf_token %}
                 <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
                 <h2>Embedding Defaults</h2>

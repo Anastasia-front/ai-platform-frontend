@@ -4,7 +4,7 @@
 {% block title %}Workflows | AI Platform{% endblock %}
 
 {% block content %}
-<section class="workflow-console">
+<section class="workflow-console" data-scroll-persist>
     <header class="workflow-header">
         <div>
             <p class="eyebrow">Workflow builder</p>
@@ -335,7 +335,7 @@
                                         <details class="node-body workflow-step-accordion">
                                             <summary>
                                                 <span>{{ step.name }}</span>
-                                                <small>Step {{ step.step_order }}</small>
+                                                <small>Step {{ step.step_order }} · ID {{ step.id }}</small>
                                             </summary>
                                             <div class="workflow-step-content">
                                                 <p>{{ step.prompt_template }}</p>
@@ -367,6 +367,11 @@
                         <form method="post" action="{% url 'dashboard:create_workflow_step' workflow_project.slug active_workflow.slug %}" class="workflow-form">
                             {% csrf_token %}
                             <h2>Add Step</h2>
+                            {% if next_step_id_hint %}
+                            <p class="muted step-form-hint">This step will likely get ID {{ next_step_id_hint }} (IDs are assigned automatically once saved).</p>
+                            {% else %}
+                            <p class="muted step-form-hint">IDs are assigned automatically once saved — you'll see this step's ID in the list above.</p>
+                            {% endif %}
                             <label>
                                 Order
                                 <input type="number" name="step_order" min="1" value="{{ workflow_steps|length|add:1 }}" required>
@@ -383,6 +388,11 @@
                                 Depends on step IDs
                                 <input type="text" name="depends_on" placeholder="1, 2">
                             </label>
+                            {% if workflow_steps %}
+                            <p class="muted step-form-hint">Enter the ID(s) of step(s) from this workflow that must run first: {% for step in workflow_steps %}{{ step.id }} ({{ step.name }}){% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+                            {% else %}
+                            <p class="muted step-form-hint">This workflow has no steps yet, so there's nothing to depend on — leave this blank for the first step.</p>
+                            {% endif %}
                             <label>
                                 Condition
                                 <input type="text" name="condition" placeholder="Optional condition">

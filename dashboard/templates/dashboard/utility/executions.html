@@ -4,7 +4,7 @@
 {% block title %}Executions / Logs | AI Platform{% endblock %}
 
 {% block content %}
-<section class="execution-console">
+<section class="execution-console" data-scroll-persist>
     <header class="workflow-header">
         <div>
             <p class="eyebrow">Executions / Logs</p>
@@ -78,7 +78,6 @@
                                 {% if execution_last_item_on_page %}
                                     <input type="hidden" name="last_item_on_page" value="1">
                                 {% endif %}
-                                <button type="submit" class="danger-button" data-loading-label="Deleting...">Delete</button>
                             </form>
                         {% endif %}
                     </div>
