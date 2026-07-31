@@ -793,6 +793,7 @@ h2 {
 
 .center-state {
   align-content: center;
+  min-height: 70vh;
   height: 100%;
   justify-items: center;
   text-align: center;
@@ -1125,7 +1126,11 @@ h2 {
 
 .documents-accordion > summary {
   display: block;
-  list-style: none;
+  list-style: inside disclosure-open;
+}
+
+.documents-accordion[open] > summary {
+  pointer-events: none;
 }
 
 .documents-accordion > summary::-webkit-details-marker {
@@ -1139,10 +1144,6 @@ h2 {
 .documents-content {
   display: grid;
   gap: 14px;
-}
-
-.documents-accordion:not([open]) > .documents-content {
-  display: grid;
 }
 
 .upload-form {
@@ -1669,7 +1670,7 @@ h2 {
 
 .summary-card p,
 .summary-card .rich-text {
-  max-height: 320px;
+  /* max-height: 320px; */
   overflow: auto;
   padding-right: 8px;
 }
@@ -1695,7 +1696,7 @@ h2 {
 
 .date-list div {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(110px, auto);
+  grid-template-columns: minmax(140px, 200px) minmax(110px, auto);
   gap: 4px 12px;
   border-top: 1px solid #e0f2fe;
   padding-top: 8px;
@@ -1966,6 +1967,7 @@ h2 {
   gap: 0;
   height: calc(100vh - 48px);
   overflow: auto;
+  scrollbar-gutter: stable;
   border: 1px solid #bae6fd;
   border-radius: 8px;
   background: #ffffff;
@@ -2681,7 +2683,7 @@ h2 {
   }
 
   .sidebar {
-    height: auto;
+    /* height: auto; */
     max-height: min-content;
     border-right: 0;
     border-bottom: 1px solid #d7dee8;
@@ -2720,6 +2722,11 @@ h2 {
   }
 
   .sidebar-toggle-desktop-icon {
+    display: none;
+  }
+
+  .app-shell.sidebar-collapsed
+    .sidebar-toggle-desktop-icon.sidebar-toggle-open {
     display: none;
   }
 
@@ -2770,17 +2777,19 @@ h2 {
   }
 
   .documents-panel {
-    overflow-y: visible;
+    overflow-y: scroll;
   }
 
   .documents-accordion > summary {
     cursor: pointer;
     display: list-item;
     list-style: inside disclosure-closed;
+    pointer-events: auto;
   }
 
   .documents-accordion[open] > summary {
     list-style: inside disclosure-open;
+    pointer-events: auto;
   }
 
   .documents-accordion > summary::-webkit-details-marker {
