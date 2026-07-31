@@ -1294,16 +1294,22 @@ def summarize_workflow_run(workflow_run, events):
     elif template:
         structured = parse_generic_template_output(output, template["output_shape"])
     else:
-        structured = parse_contract_review_output(output)
+        structured = parse_unstructured_output(output)
 
     event_counts = {}
     for event in events:
         event_type = event.get("event_type") or "event"
         event_counts[event_type] = event_counts.get(event_type, 0) + 1
 
+    workflow_name = (
+        template["name"]
+        if template
+        else (workflow_run.get("workflow_name") or workflow_run.get("name"))
+    )
+
     return {
         "template_type": template_type,
-        "template_name": template["name"] if template else None,
+        "template_name": workflow_name,
         "output": output,
         "structured": structured,
         "rows": build_template_result_rows(structured),
@@ -1312,6 +1318,13 @@ def summarize_workflow_run(workflow_run, events):
         "event_counts": event_counts,
         "event_count": len(events),
     }
+
+
+def parse_unstructured_output(output):
+    parsed = parse_json_object(output)
+    if isinstance(parsed, dict):
+        return parsed
+    return {"summary": output.strip() or "No output returned."}
 
 
 INPUT_SOURCE_LABELS = (
@@ -1368,7 +1381,7 @@ def workflow_template_type(workflow_run, output):
             if set(template["output_shape"].keys()) & set(parsed.keys()):
                 return template["key"]
 
-    return "contract-review"
+    return None
 
 
 def workflow_projects_by_id(token, projects):
@@ -1405,3 +1418,10 @@ def parse_depends_on(value):
         return []
 
     return [int(item.strip()) for item in value.split(",") if item.strip()]
+
+
+def next_workflow_step_id_hint(workflow_steps):
+    step_ids = [step.get("id") for step in workflow_steps if step.get("id") is not None]
+    if not step_ids:
+        return None
+    return max(step_ids) + 1

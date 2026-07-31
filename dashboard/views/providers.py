@@ -10,8 +10,8 @@ from .utils import (
     auth_required,
     handle_api_error,
     provider_page_url,
-    resource_slug,
     resolve_project,
+    resource_slug,
     session_token,
     with_slug,
 )
@@ -68,11 +68,9 @@ def _with_embedding_rebuild_state(documents, provider_data):
     ]
 
 
-@auth_required
-def providers(request):
+def _build_providers_context(request):
     token = session_token(request)
     context = app_context(request, endpoints=_endpoints_for("Providers"))
-    request.session.pop("embedding_tool_result", None)
     active_project = None
     documents = []
     active_embedding_document = None
@@ -123,7 +121,18 @@ def providers(request):
             ),
         }
     )
+    return context
+
+
+@auth_required
+def providers(request):
+    request.session.pop("embedding_tool_result", None)
+    context = _build_providers_context(request)
     return render(request, "dashboard/utility/providers.html", context)
+
+
+def _is_htmx_request(request):
+    return request.headers.get("HX-Request") == "true"
 
 
 @auth_required
@@ -144,6 +153,12 @@ def update_chat_provider(request):
         handle_api_error(request, exc)
         django_messages.error(request, exc.message)
 
+    if _is_htmx_request(request):
+        return render(
+            request,
+            "dashboard/utility/providers.html",
+            _build_providers_context(request),
+        )
     return redirect(provider_page_url(request))
 
 
@@ -168,6 +183,12 @@ def update_embedding_provider(request):
         handle_api_error(request, exc)
         django_messages.error(request, exc.message)
 
+    if _is_htmx_request(request):
+        return render(
+            request,
+            "dashboard/utility/providers.html",
+            _build_providers_context(request),
+        )
     return redirect(provider_page_url(request))
 
 

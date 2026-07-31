@@ -6,6 +6,7 @@ from django.conf import settings as django_settings
 from django.contrib import messages as django_messages
 from django.http import JsonResponse
 from django.shortcuts import redirect
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from ..services import backend_api
@@ -26,6 +27,16 @@ def index(request):
     return redirect("dashboard:login")
 
 
+def safe_next_url(request, next_url):
+    if next_url and url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return None
+
+
 def login_view(request):
     if request.method == "POST":
         email = request.POST.get("email", "").strip()
@@ -34,7 +45,9 @@ def login_view(request):
         try:
             token_payload = backend_api.login(email, password)
             store_login_session(request, token_payload, fallback_email=email)
-            return redirect(request.GET.get("next") or "dashboard:projects")
+            return redirect(
+                safe_next_url(request, request.GET.get("next")) or "dashboard:projects"
+            )
         except backend_api.BackendAPIError as exc:
             django_messages.error(request, exc.message)
 
@@ -48,8 +61,11 @@ def google_login_start(request):
 
     state = secrets.token_urlsafe(32)
     request.session["google_oauth_state"] = state
-    next_url = request.GET.get("next")
-    if next_url and next_url.startswith("/"):
+    # `next_url.startswith("/")` alone would still accept a protocol-relative
+    # URL like "//evil.com", which browsers treat as absolute — use the same
+    # host/scheme-validated helper as login_view.
+    next_url = safe_next_url(request, request.GET.get("next"))
+    if next_url:
         request.session["google_oauth_next"] = next_url
 
     params = {

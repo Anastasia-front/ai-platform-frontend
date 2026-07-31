@@ -16,6 +16,7 @@ from .utils import (
     workflow_projects_by_id,
 )
 
+
 @auth_required
 def executions(request):
     context = app_context(request, endpoints=_endpoints_for("Executions"))
@@ -379,4 +380,34 @@ def execution_status_partial(request, run_id):
         request,
         "dashboard/partials/execution_status.html",
         {"workflow_run": workflow_run, "active_run_statuses": ACTIVE_RUN_STATUSES},
+    )
+
+
+@auth_required
+def execution_content_partial(request, run_id):
+    """HTMX polling target: returns the structured result, raw input/output,
+    and events for a run. While the run is still pending/running this keeps
+    that content in sync with the status badge, which polls independently --
+    without this, a page left open across a run finishing would keep showing
+    the empty/in-progress content it had at initial page load."""
+    try:
+        workflow_run = backend_api.get_workflow_run(session_token(request), run_id)
+        events = backend_api.list_workflow_run_events(session_token(request), run_id)
+        workflow_run = redact_secrets(workflow_run)
+        events = redact_secrets(events)
+        workflow_run_summary = summarize_workflow_run(workflow_run, events)
+    except backend_api.BackendAPIError:
+        workflow_run = None
+        events = []
+        workflow_run_summary = None
+
+    return render(
+        request,
+        "dashboard/partials/execution_content.html",
+        {
+            "workflow_run": workflow_run,
+            "workflow_events": events,
+            "workflow_run_summary": workflow_run_summary,
+            "active_run_statuses": ACTIVE_RUN_STATUSES,
+        },
     )

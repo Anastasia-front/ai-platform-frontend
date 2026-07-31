@@ -18,6 +18,7 @@ from .utils import (
     find_workflow_template,
     generic_template_input,
     handle_api_error,
+    next_workflow_step_id_hint,
     parse_depends_on,
     resolve_project,
     resolve_project_workflow,
@@ -104,12 +105,14 @@ def workflows(request):
             None,
         )
 
+    next_step_id_hint = None
     if active_workflow:
         try:
             workflow_steps = sorted(
                 backend_api.list_workflow_steps(token, active_workflow["id"]),
                 key=lambda step: step.get("step_order", 0),
             )
+            next_step_id_hint = next_workflow_step_id_hint(workflow_steps)
         except backend_api.BackendAPIError as exc:
             handle_api_error(request, exc)
             context["workflow_error"] = exc.message
@@ -156,6 +159,7 @@ def workflows(request):
             "workflows": workflows_payload,
             "active_workflow": active_workflow,
             "workflow_steps": workflow_steps,
+            "next_step_id_hint": next_step_id_hint,
             "project_documents": project_documents,
             "contract_review_workflow": contract_review_workflow,
             "contract_review_timeline": CONTRACT_REVIEW_STEPS,
