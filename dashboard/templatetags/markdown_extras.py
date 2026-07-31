@@ -1,6 +1,7 @@
 import html
 import re
 from datetime import date, datetime
+from datetime import timezone as dt_timezone
 
 from django import template
 from django.utils.dateparse import parse_date, parse_datetime
@@ -27,7 +28,21 @@ def human_datetime(value):
                 return value
             parsed = datetime.combine(parsed_date, datetime.min.time())
 
-    return parsed.strftime('%d/%m/%Y - %H:%M')
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt_timezone.utc)
+    parsed = parsed.astimezone(dt_timezone.utc)
+
+    # Timestamps are stored/served in UTC. Render a <time> element carrying
+    # the ISO instant so local_time.js can reformat it to the browser's own
+    # timezone client-side -- the browser is the only thing that reliably
+    # knows the viewer's real timezone. The inline text is a UTC fallback
+    # for no-JS contexts.
+    return mark_safe(
+        '<time datetime="{iso}" data-local-datetime>{fallback}</time>'.format(
+            iso=parsed.isoformat(),
+            fallback=parsed.strftime('%d/%m/%Y - %H:%M'),
+        )
+    )
 
 
 @register.filter
