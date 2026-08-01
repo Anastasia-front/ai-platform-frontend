@@ -3,6 +3,10 @@ name: E2E - Main branch regression
 on:
   push:
     branches: [main]
+  # Lets you re-run this (and republish the report/landing page) from the
+  # Actions tab without needing a new commit -- e.g. after a Pages/DNS
+  # settings change, or just to regenerate the report on demand.
+  workflow_dispatch: {}
 
 concurrency:
   group: e2e-main
