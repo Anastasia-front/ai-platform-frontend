@@ -2855,6 +2855,7 @@ h2 {
 
 @media (max-width: 640px) {
   .main {
+    overflow-y: auto;
     padding: 12px;
   }
 
@@ -2884,5 +2885,9 @@ h2 {
 
   .guide-hero h1 {
     font-size: 25px;
+  }
+
+  .guide-flow-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
 }
