@@ -69,9 +69,9 @@ class SecretRedactionTests(TestCase):
         value = {
             "url": (
                 "https://generativelanguage.googleapis.com/v1beta/models/"
-                "gemini:generateContent?key=AIzaSyA7y33CG1R3yGylCPBU-y00Wkjw-aQG5WU"
+                "gemini:generateContent?key=AIzaSyFAKE00000000000000000000000TEST"
             ),
-            "GOOGLE_API_KEY": "AIzaSyA7y33CG1R3yGylCPBU-y00Wkjw-aQG5WU",
+            "GOOGLE_API_KEY": "AIzaSyFAKE00000000000000000000000TEST",
             "nested": [
                 {
                     "error": (
@@ -84,7 +84,7 @@ class SecretRedactionTests(TestCase):
 
         redacted = redact_secrets(value)
 
-        self.assertNotIn("AIzaSyA7y33CG1R3yGylCPBU-y00Wkjw-aQG5WU", str(redacted))
+        self.assertNotIn("AIzaSyFAKE00000000000000000000000TEST", str(redacted))
         self.assertNotIn("secret-value", str(redacted))
         self.assertNotIn("hunter2", str(redacted))
         self.assertNotIn("sk-project-secret", str(redacted))
@@ -1096,7 +1096,7 @@ class WorkflowViewTests(TestCase):
     def test_execution_detail_redacts_secrets_from_events(
         self, mock_list_projects, mock_get_workflow_run, mock_list_events
     ):
-        leaked_key = "AIzaSyA7y33CG1R3yGylCPBU-y00Wkjw-aQG5WU"
+        leaked_key = "AIzaSyFAKE00000000000000000000000TEST"
         mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
         mock_get_workflow_run.return_value = {
             "id": 80,
