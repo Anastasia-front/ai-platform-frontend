@@ -53,3 +53,14 @@ terraform.tfvars
 
 # crash logs
 crash.log
+
+# Node / Playwright E2E suite
+node_modules/
+playwright/.auth/
+playwright-report/
+test-results/
+tests/e2e/.e2e-pids/
+.e2e-pids/
+blob-report/
+.env.e2e.local
+tests/e2e/visual/critical-pages.spec.ts-snapshots/

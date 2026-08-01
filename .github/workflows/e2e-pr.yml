@@ -1,0 +1,85 @@
+name: E2E - Pull Request
+
+on:
+  # Disabled: this project doesn't use pull requests, so the pull_request
+  # trigger is commented out rather than deleted -- kept in the repo in
+  # case that changes later. workflow_dispatch lets you still run it by
+  # hand from the Actions tab if you ever want to.
+  # pull_request:
+  #   branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: e2e-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  E2E_ENVIRONMENT: test
+  E2E_BASE_URL: http://localhost:8001
+  E2E_API_URL: http://localhost:8000
+  E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+  E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+  E2E_SECONDARY_USER_EMAIL: ${{ secrets.E2E_SECONDARY_USER_EMAIL }}
+  E2E_SECONDARY_USER_PASSWORD: ${{ secrets.E2E_SECONDARY_USER_PASSWORD }}
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  api-critical:
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Start stack
+        run: ./scripts/test-e2e.sh up
+      - run: npx playwright test --grep "@api.*@critical|@critical.*@api" --project=chromium
+      - name: Stop stack
+        if: always()
+        run: ./scripts/test-e2e.sh down
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-api
+          path: playwright-report/
+          retention-days: 14
+
+  chromium-critical:
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Start stack
+        run: ./scripts/test-e2e.sh up
+      - run: npx playwright test --grep @critical --project=chromium
+      - name: Stop stack
+        if: always()
+        run: ./scripts/test-e2e.sh down
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-chromium-critical
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

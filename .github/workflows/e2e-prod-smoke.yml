@@ -1,0 +1,84 @@
+name: E2E - Production smoke (post-deployment)
+
+on:
+  workflow_run:
+    workflows: ["Deploy Frontend"]
+    types: [completed]
+  workflow_dispatch: {}
+
+concurrency:
+  group: e2e-prod-smoke
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      E2E_ENVIRONMENT: production-smoke
+      E2E_BASE_URL: ${{ vars.PRODUCTION_FRONTEND_URL }}
+      E2E_API_URL: ${{ vars.PRODUCTION_API_URL }}
+      PROD_SMOKE_EMAIL: ${{ secrets.PROD_SMOKE_EMAIL }}
+      PROD_SMOKE_PASSWORD: ${{ secrets.PROD_SMOKE_PASSWORD }}
+      ALLOW_PRODUCTION_SMOKE_WRITES: ${{ vars.ALLOW_PRODUCTION_SMOKE_WRITES || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Wait for frontend health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "${E2E_BASE_URL}/health/" > /dev/null; then echo "frontend healthy"; exit 0; fi
+            sleep 10
+          done
+          echo "frontend did not become healthy in time" >&2
+          exit 1
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "${E2E_API_URL}/health" > /dev/null; then echo "backend healthy"; exit 0; fi
+            sleep 10
+          done
+          echo "backend did not become healthy in time" >&2
+          exit 1
+
+      - name: Run production-safe smoke tests
+        run: npx playwright test --grep @production-safe --project=production-smoke
+
+      - name: Upload report and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-smoke-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "## Production Smoke Result" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f test-results/junit.xml ]; then
+            FAILURES=$(grep -o 'failures="[0-9]*"' test-results/junit.xml | head -1 | grep -o '[0-9]*' || echo "0")
+            echo "Failures: ${FAILURES}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "Full HTML report attached as an artifact." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./playwright-report
+          destination_dir: prod-smoke
+          keep_files: true

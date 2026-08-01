@@ -1,0 +1,154 @@
+name: E2E - Nightly full regression
+
+on:
+  # Once a week, Sunday 2am UTC -- not nightly despite the workflow name.
+  # Runs the full cross-browser + visual + a11y sweep, which is the most
+  # GitHub Actions minutes-heavy job in the suite, so it's kept infrequent.
+  schedule:
+    - cron: "0 2 * * 0"
+  workflow_dispatch: {}
+
+concurrency:
+  group: e2e-nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  E2E_ENVIRONMENT: test
+  E2E_BASE_URL: http://localhost:8001
+  E2E_API_URL: http://localhost:8000
+  E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+  E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+  E2E_SECONDARY_USER_EMAIL: ${{ secrets.E2E_SECONDARY_USER_EMAIL }}
+  E2E_SECONDARY_USER_PASSWORD: ${{ secrets.E2E_SECONDARY_USER_PASSWORD }}
+
+jobs:
+  full-cross-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: ./scripts/test-e2e.sh up
+      # @visual runs in its own job below, on a controlled single browser --
+      # baselines are environment-specific and comparing them across
+      # chromium/firefox/webkit here would just be noise.
+      - run: npx playwright test --grep-invert "@real-provider|@visual"
+      - if: always()
+        run: ./scripts/test-e2e.sh down
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-nightly-cross-browser
+          path: blob-report/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-nightly
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  visual-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: ./scripts/test-e2e.sh up
+      # Runs on a single controlled browser/viewport per the plan ("Use a
+      # controlled viewport, fonts and browser"). Baselines
+      # (tests/e2e/visual/**/*-snapshots/) must be generated on this same
+      # runner image -- locally generated baselines will not match due to
+      # font/rendering differences. Bootstrap or refresh them with:
+      #   npx playwright test --grep @visual --project=chromium --update-snapshots
+      # then commit the resulting `*-snapshots/` directories.
+      # continue-on-error: a missing/stale baseline should surface as a
+      # visible diff for review, not fail the whole nightly run.
+      - run: npx playwright test --grep "@visual" --project=chromium
+        continue-on-error: true
+      - if: always()
+        run: ./scripts/test-e2e.sh down
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-nightly-visual
+          path: blob-report/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-visual
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  optional-real-provider-smoke:
+    runs-on: ubuntu-latest
+    if: vars.ENABLE_REAL_PROVIDER_SMOKE == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: ./scripts/test-e2e.sh up
+      - run: npx playwright test --grep "@real-provider" --project=chromium
+        timeout-minutes: 10
+      - if: always()
+        run: ./scripts/test-e2e.sh down
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-nightly-real-provider
+          path: blob-report/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-real-provider
+          path: playwright-report/
+          retention-days: 14
+
+  # Merges every job's blob report into one HTML report and publishes it to
+  # GitHub Pages -- no AWS involved. `if: always()` so a merged report is
+  # still published (with failures/diffs visible) even if a job above
+  # failed; optional-real-provider-smoke being skipped doesn't block this.
+  publish-report:
+    needs: [full-cross-browser, visual-regression, optional-real-provider-smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-nightly-*
+          path: all-blob-reports
+          merge-multiple: true
+      - run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./playwright-report
+          destination_dir: weekly
+          keep_files: true

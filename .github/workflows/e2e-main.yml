@@ -1,0 +1,120 @@
+name: E2E - Main branch regression
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: e2e-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  E2E_ENVIRONMENT: test
+  E2E_BASE_URL: http://localhost:8001
+  E2E_API_URL: http://localhost:8000
+  E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+  E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+  E2E_SECONDARY_USER_EMAIL: ${{ secrets.E2E_SECONDARY_USER_EMAIL }}
+  E2E_SECONDARY_USER_PASSWORD: ${{ secrets.E2E_SECONDARY_USER_PASSWORD }}
+
+jobs:
+  full-chromium:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: ./scripts/test-e2e.sh up
+      # @visual is excluded here: baselines are environment-specific (fonts/
+      # rendering vary by OS/CI image) and are only maintained in the
+      # nightly workflow, which runs on the same runner image consistently.
+      - run: npx playwright test --grep-invert "@real-provider|@visual" --project=chromium
+      - if: always()
+        run: ./scripts/test-e2e.sh down
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-main-chromium
+          path: blob-report/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-main-chromium
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  critical-firefox-webkit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps firefox webkit
+      - run: ./scripts/test-e2e.sh up
+      - run: npx playwright test --grep @critical --project=firefox --project=webkit
+      - if: always()
+        run: ./scripts/test-e2e.sh down
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-main-cross-browser
+          path: blob-report/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-main-cross-browser
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  # Merges every job's blob report above into one HTML report and publishes
+  # it to GitHub Pages -- no AWS involved, so it doesn't touch prod infra or
+  # your free-tier usage. `if: always()` so a merged report (with failures
+  # visible) still gets published even when a test job above failed.
+  publish-report:
+    needs: [full-chromium, critical-firefox-webkit]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-main-*
+          path: all-blob-reports
+          merge-multiple: true
+      - run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./playwright-report
+          destination_dir: main
+          keep_files: true
+      # Landing page + custom domain, republished each run so it stays in
+      # sync with .github/pages/ -- keep_files means this doesn't clobber
+      # main/, weekly/, or prod-smoke/ from the other workflows.
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./.github/pages
+          keep_files: true
+          cname: e2e.ai-automation-platform.com
