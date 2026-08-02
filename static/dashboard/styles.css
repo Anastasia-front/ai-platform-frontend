@@ -1444,7 +1444,6 @@ h2 {
   gap: 8px;
   justify-items: stretch;
   margin-top: 12px;
-  max-height: 360px;
   overflow: auto;
   padding-right: 4px;
   width: 100%;
@@ -1888,7 +1887,6 @@ h2 {
 .workflow-step-content {
   display: grid;
   gap: 8px;
-  margin-top: 12px;
   min-width: 0;
   width: 100%;
 }
@@ -2010,8 +2008,8 @@ h2 {
 
 .execution-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   padding: 0;
   height: min-content;
 }
