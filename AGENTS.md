@@ -8,7 +8,7 @@ https://github.com/Anastasia-front/ai-platform-backend
 Backend is a separate FastAPI API service.
 
 Production API base URL:
-http://ec2-3-75-228-59.eu-central-1.compute.amazonaws.com
+https://api.ai-automation-platform.com/
 
 Important:
 
