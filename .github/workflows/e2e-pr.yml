@@ -45,6 +45,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - uses: ./.github/actions/setup-backend
       - name: Start stack
         run: ./scripts/test-e2e.sh up
       - run: npx playwright test --grep "@api.*@critical|@critical.*@api" --project=chromium
@@ -69,6 +70,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - uses: ./.github/actions/setup-backend
       - name: Start stack
         run: ./scripts/test-e2e.sh up
       - run: npx playwright test --grep @critical --project=chromium

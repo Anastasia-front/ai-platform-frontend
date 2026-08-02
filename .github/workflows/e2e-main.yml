@@ -35,6 +35,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - uses: ./.github/actions/setup-backend
       - run: ./scripts/test-e2e.sh up
       # @visual is excluded here: baselines are environment-specific (fonts/
       # rendering vary by OS/CI image) and are only maintained in the
@@ -67,6 +68,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps firefox webkit
+      - uses: ./.github/actions/setup-backend
       - run: ./scripts/test-e2e.sh up
       - run: npx playwright test --grep @critical --project=firefox --project=webkit
       - if: always()
@@ -102,12 +104,26 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           pattern: blob-report-main-*
           path: all-blob-reports
           merge-multiple: true
-      - run: npx playwright merge-reports --reporter html ./all-blob-reports
-      - uses: peaceiris/actions-gh-pages@v4
+      # continue-on-error above means all-blob-reports/ may not exist at all
+      # (e.g. every upstream job crashed before Playwright ever ran) --
+      # guard so this job reports that clearly instead of crashing on a
+      # missing directory.
+      - name: Merge reports
+        run: |
+          mkdir -p all-blob-reports
+          if [ -z "$(ls -A all-blob-reports 2>/dev/null)" ]; then
+            echo "::warning::No blob reports were produced by the test jobs -- nothing to merge/publish this run."
+            exit 0
+          fi
+          npx playwright merge-reports --reporter html ./all-blob-reports
+          echo "MERGED=true" >> "$GITHUB_ENV"
+      - if: env.MERGED == 'true'
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./playwright-report

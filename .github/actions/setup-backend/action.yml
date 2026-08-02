@@ -1,0 +1,69 @@
+name: Set up ai-platform-backend for E2E
+description: >
+  Checks out ai-platform-backend as a sibling directory (matching the local
+  workspace layout scripts/test-e2e.sh expects), installs its Python deps,
+  and writes a throwaway .env for the ephemeral CI Postgres/Redis stack.
+  No real secrets or AI provider credentials involved -- CHAT/EMBEDDING
+  providers point at a non-existent local Ollama on purpose, so any test
+  that needs a real provider call fails fast instead of retrying/hanging.
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout ai-platform-backend
+      uses: actions/checkout@v4
+      with:
+        repository: Anastasia-front/ai-platform-backend
+        path: ai-platform-backend-checkout
+
+    # test-e2e.sh resolves BACKEND_DIR as "<frontend-checkout>/../ai-platform-backend",
+    # i.e. a sibling of $GITHUB_WORKSPACE, not a subdirectory of it -- move
+    # the checkout there to match.
+    - name: Place backend as a sibling directory
+      shell: bash
+      run: |
+        rm -rf "${{ github.workspace }}/../ai-platform-backend"
+        mv "${{ github.workspace }}/ai-platform-backend-checkout" "${{ github.workspace }}/../ai-platform-backend"
+
+    # No pip cache here: cache-dependency-path resolves relative to the
+    # frontend checkout ($GITHUB_WORKSPACE), and the backend now lives one
+    # level above it (as a true sibling, matching the local layout), so a
+    # workspace-relative glob can't reach requirements.txt to hash it.
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+
+    - name: Install backend dependencies
+      shell: bash
+      working-directory: ${{ github.workspace }}/../ai-platform-backend
+      run: pip install -r requirements.txt
+
+    - name: Write throwaway CI .env
+      shell: bash
+      working-directory: ${{ github.workspace }}/../ai-platform-backend
+      run: |
+        cat > .env <<'EOF'
+        DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/ai_platform
+        POSTGRES_USER=postgres
+        POSTGRES_PASSWORD=postgres
+        POSTGRES_DB=ai_platform
+
+        JWT_SECRET=ci-ephemeral-secret-not-for-production
+        ALGORITHM=HS256
+
+        STORAGE_PROVIDER=local
+
+        CHAT_PROVIDER=ollama
+        EMBEDDING_PROVIDER=ollama
+        CHAT_PROVIDER_CHAIN=ollama
+        EMBEDDING_PROVIDER_CHAIN=ollama
+        CHAT_BASE_URL=http://localhost:11434
+        EMBEDDING_BASE_URL=http://localhost:11434
+
+        PROVIDER_MAX_RETRIES=0
+        PROVIDER_REQUEST_TIMEOUT_SECONDS=5
+        PROVIDER_FAILURE_THRESHOLD=1
+        PROVIDER_COOLDOWN_SECONDS=5
+
+        CELERY_BROKER_URL=redis://localhost:6379/0
+        EOF
