@@ -29,6 +29,17 @@ wait_for() {
 }
 
 up() {
+  # Pre-create the uploads dir before the worker container's bind mount does.
+  # The worker's Dockerfile has no USER directive, so it runs as root; if
+  # `./uploads` doesn't exist yet when `docker compose up` starts it, Docker
+  # auto-creates the bind-mount source on the host owned by root, and the
+  # bare `uvicorn` process below (running as the current, non-root user)
+  # then gets a silent PermissionError writing uploaded files -- surfacing
+  # as an unhandled 500 on every document upload. Docker Desktop on macOS
+  # doesn't hit this (its bind-mount layer maps to the host user), which is
+  # why this only showed up in CI.
+  mkdir -p "$BACKEND_DIR/uploads"
+
   echo "[test-e2e] Starting Postgres, Redis and Celery worker..."
   (cd "$BACKEND_DIR" && docker compose up -d postgres redis worker)
 
