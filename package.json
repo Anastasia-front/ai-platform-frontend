@@ -15,6 +15,7 @@
     "test:e2e:visual": "playwright test --grep @visual --project=chromium",
     "test:e2e:visual:update": "playwright test --grep @visual --project=chromium --update-snapshots",
     "test:list": "playwright test --list",
+    "screenshots": "node scripts/capture-screenshots.mjs",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report"
   },

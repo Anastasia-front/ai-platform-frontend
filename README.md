@@ -2,6 +2,52 @@
 
 Django server-rendered frontend for the AI Workflow Automation Platform.
 
+## Screenshots
+
+Generated with `npm run screenshots` (see [scripts/capture-screenshots.mjs](scripts/capture-screenshots.mjs)), which seeds realistic demo data into a local stack and captures each page full-page and logged in (no test-suite clutter, no masked/blank states).
+
+### Auth
+
+|                  Log in                   |                    Register                     |
+| :---------------------------------------: | :---------------------------------------------: |
+| ![Login page](docs/screenshots/login.png) | ![Register page](docs/screenshots/register.png) |
+
+### Workspace
+
+|                    Projects                     |                           Chat + RAG documents                            |
+| :---------------------------------------------: | :-----------------------------------------------------------------------: |
+| ![Projects list](docs/screenshots/projects.png) | ![Chat conversation with an attached document](docs/screenshots/chat.png) |
+
+|                         Documents                          |
+| :--------------------------------------------------------: |
+| ![Project documents panel](docs/screenshots/documents.png) |
+
+### Workflows
+
+|                             Workflow builder                             |                                Workflow templates                                 |
+| :----------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
+| ![Workflow builder with a demo pipeline](docs/screenshots/workflows.png) | ![Prebuilt workflow templates, expanded](docs/screenshots/workflow-templates.png) |
+
+|                                 Step details and dependencies                                 |                                       Reorderable step list                                        |
+| :-------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
+| ![Workflow step details showing DAG dependencies](docs/screenshots/workflow-step-details.png) | ![Workflow steps with drag handles for reordering](docs/screenshots/workflow-dropdowns-opened.png) |
+
+|                                      Collapsed sidebar / step builder                                      |
+| :--------------------------------------------------------------------------------------------------------: |
+| ![Workflow step builder with the project sidebar collapsed](docs/screenshots/workflows-sidebar-closed.png) |
+
+### Executions and providers
+
+|                                     Execution history                                     |                            Provider configuration                            |
+| :---------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------: |
+| ![Execution history with completed/failed/canceled runs](docs/screenshots/executions.png) | ![Chat and embedding provider configuration](docs/screenshots/providers.png) |
+
+### Help and docs
+
+|                     In-app guide                      |                           Backend map                           |
+| :---------------------------------------------------: | :-------------------------------------------------------------: |
+| ![In-app usage guide](docs/screenshots/guideline.png) | ![Backend endpoint map / docs links](docs/screenshots/docs.png) |
+
 ## Local Development
 
 1. Create or update `.env`:
