@@ -1,11 +1,15 @@
-name: Set up ai-platform-backend for E2E
+name: Set up ai-platform-backend and frontend Python deps for E2E
 description: >
   Checks out ai-platform-backend as a sibling directory (matching the local
-  workspace layout scripts/test-e2e.sh expects), installs its Python deps,
-  and writes a throwaway .env for the ephemeral CI Postgres/Redis stack.
-  No real secrets or AI provider credentials involved -- CHAT/EMBEDDING
-  providers point at a non-existent local Ollama on purpose, so any test
-  that needs a real provider call fails fast instead of retrying/hanging.
+  workspace layout scripts/test-e2e.sh expects), installs both the
+  backend's and the frontend's (Django) Python deps, and writes a
+  throwaway .env for the ephemeral CI Postgres/Redis stack. No real
+  secrets or AI provider credentials involved -- CHAT/EMBEDDING providers
+  point at a non-existent local Ollama on purpose, so any test that needs
+  a real provider call fails fast instead of retrying/hanging. The
+  frontend's own Django settings (SECRET_KEY, ALLOWED_HOSTS, SQLITE_PATH,
+  BASE_API_URL, ...) already default sensibly via os.getenv() fallbacks
+  in config/settings.py, so no frontend .env is needed here.
 
 runs:
   using: composite
@@ -36,6 +40,14 @@ runs:
     - name: Install backend dependencies
       shell: bash
       working-directory: ${{ github.workspace }}/../ai-platform-backend
+      run: pip install -r requirements.txt
+
+    # manage.py needs Django installed on the runner too -- test-e2e.sh
+    # runs it directly (not via Docker), so npm ci alone (Node/Playwright
+    # deps) was never enough here.
+    - name: Install frontend (Django) dependencies
+      shell: bash
+      working-directory: ${{ github.workspace }}
       run: pip install -r requirements.txt
 
     - name: Write throwaway CI .env
