@@ -57,6 +57,15 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 30
+      # Captures the backend/frontend server output on failure -- an
+      # unhandled backend 500 only shows up here, not in the Playwright
+      # report, and re-running blind to guess at it wastes CI time.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: server-logs-main-chromium
+          path: .e2e-pids/*.log
+          retention-days: 14
 
   critical-firefox-webkit:
     runs-on: ubuntu-latest
@@ -67,7 +76,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps firefox webkit
+      # The [setup-user] project always launches chromium (Playwright's
+      # default engine when a project doesn't override it), regardless of
+      # which --project flags this job passes downstream -- install it too
+      # or auth.setup.ts can't launch a browser at all.
+      - run: npx playwright install --with-deps chromium firefox webkit
       - uses: ./.github/actions/setup-backend
       - run: ./scripts/test-e2e.sh up
       - run: npx playwright test --grep @critical --project=firefox --project=webkit
@@ -87,6 +100,12 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: server-logs-main-cross-browser
+          path: .e2e-pids/*.log
+          retention-days: 14
 
   # Merges every job's blob report above into one HTML report and publishes
   # it to GitHub Pages -- no AWS involved, so it doesn't touch prod infra or
