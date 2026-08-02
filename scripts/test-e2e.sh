@@ -43,6 +43,20 @@ up() {
   echo "[test-e2e] Starting Postgres, Redis and Celery worker..."
   (cd "$BACKEND_DIR" && docker compose up -d postgres redis worker)
 
+  # `docker compose up -d` returns once the container process launches, not
+  # once Postgres has finished initializing and is accepting connections --
+  # running alembic immediately after is a race that usually wins locally
+  # (Postgres inits fast) but can lose on a colder CI runner, failing with
+  # "the database system is starting up". Wait for real readiness instead.
+  echo "[test-e2e] Waiting for Postgres to accept connections..."
+  for _ in $(seq 1 30); do
+    if (cd "$BACKEND_DIR" && docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-postgres}") > /dev/null 2>&1; then
+      echo "[test-e2e] Postgres is ready"
+      break
+    fi
+    sleep 1
+  done
+
   echo "[test-e2e] Applying backend migrations..."
   (cd "$BACKEND_DIR" && alembic upgrade head)
 
