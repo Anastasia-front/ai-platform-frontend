@@ -42,6 +42,12 @@ Generated with `npm run screenshots` (see [scripts/capture-screenshots.mjs](scri
 | :---------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------: |
 | ![Execution history with completed/failed/canceled runs](docs/screenshots/executions.png) | ![Chat and embedding provider configuration](docs/screenshots/providers.png) |
 
+### Execution details
+
+|                         Structured output                         |                           Live streaming                            |
+| :---------------------------------------------------------------: | :-----------------------------------------------------------------: |
+| ![Execution details page](docs/screenshots/execution-details.png) | ![Live streaming](docs/screenshots/execution-details-streaming.png) |
+
 ### Help and docs
 
 |                     In-app guide                      |                           Backend map                           |
