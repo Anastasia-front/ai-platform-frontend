@@ -30,7 +30,10 @@
     {% if workflow_run.status == "completed" or workflow_run.status == "failed" or workflow_run.status == "paused" or workflow_run.status == "canceled" or workflow_run.status == "cancelled" %}
         <form method="post" action="{% url 'dashboard:delete_execution' workflow_run.id %}" data-loading-form data-confirm-message="Delete this execution permanently? This action cannot be undone.">
             {% csrf_token %}
-            <input type="hidden" name="next" value="{% url 'dashboard:executions' %}">
+            <input type="hidden" name="next" value="{% if next_url %}{{ next_url }}{% else %}{% url 'dashboard:executions' %}{% endif %}">
+            {% if last_item_on_page %}
+                <input type="hidden" name="last_item_on_page" value="1">
+            {% endif %}
             <button type="submit" class="danger-button" data-loading-label="Deleting...">Delete</button>
         </form>
     {% endif %}
