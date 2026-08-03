@@ -204,7 +204,7 @@ Required GitHub repository variables:
 
 ## Backend Endpoints
 
-The main FastAPI endpoints discovered in `../ai-platform-backend/app/api` are:
+The main FastAPI endpoints discovered in `GitHub repository - ai-platform-backend/app/api` are:
 
 - Health: `GET /health`
 - Auth: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
@@ -212,6 +212,6 @@ The main FastAPI endpoints discovered in `../ai-platform-backend/app/api` are:
 - Chats: `GET /projects/{project_id}/chats`, `POST /projects/{project_id}/chats`, `GET /chats/{chat_id}`, `DELETE /chats/{chat_id}`
 - Messages: `GET /chats/{chat_id}/messages`, `POST /chats/{chat_id}/messages`
 - Workflows: `GET /projects/{project_id}/workflows`, `GET /workflows/{workflow_id}`, `POST /workflows/{workflow_id}/run`
-- Executions: `GET /runs/{run_id}`, `GET /runs/{run_id}/events`, `POST /runs/{run_id}/resume`
+- Executions: `GET /runs/{run_id}`, `GET /runs/{run_id}/events`, `GET /runs/{run_id}/stream`, `POST /runs/{run_id}/resume`
 - Documents: `GET /projects/{project_id}/documents`, `POST /projects/{project_id}/documents`, `DELETE /documents/{document_id}`, `GET /documents/{document_id}/chunks`, `POST /documents/{document_id}/process`
 - Providers: `POST /documents/{document_id}/embeddings/rebuild`, `POST /projects/{project_id}/embeddings/sync`

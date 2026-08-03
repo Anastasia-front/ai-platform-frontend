@@ -140,6 +140,7 @@ MAIN_ENDPOINTS = [
     {"method": "DELETE", "path": "/runs/canceled", "area": "Executions"},
     {"method": "DELETE", "path": "/runs/{run_id}", "area": "Executions"},
     {"method": "GET", "path": "/runs/{run_id}/events", "area": "Executions"},
+    {"method": "GET", "path": "/runs/{run_id}/stream", "area": "Executions"},
     {"method": "GET", "path": "/agent_runs/{agent_run_id}", "area": "Executions"},
     {"method": "POST", "path": "/agent_runs/", "area": "Executions"},
 ]
