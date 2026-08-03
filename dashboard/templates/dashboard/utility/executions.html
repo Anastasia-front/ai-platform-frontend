@@ -62,6 +62,7 @@
                         <strong>Execution #{{ run.id }}</strong>
                         <span>
                             {% if run.project %}{{ run.project.name }} · {% endif %}
+                            {% if run.template_name %}{{ run.template_name }} · {% endif %}
                             Workflow #{{ run.workflow_id }} · {{ run.status }}
                         </span>
                         {% if run.input_source %}
@@ -70,16 +71,7 @@
                         <small>{{ run.created_at|human_datetime }}</small>
                     </a>
                     <div class="execution-buttons-container">
-                        {% include "dashboard/partials/execution_actions.html" with workflow_run=run %}
-                        {% if run.status == "completed" or run.status == "failed" or run.status == "paused" or run.status == "canceled" or run.status == "cancelled" %}
-                            <form method="post" action="{% url 'dashboard:delete_execution' run.id %}" data-loading-form data-confirm-message="Delete this execution permanently? This action cannot be undone.">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                {% if execution_last_item_on_page %}
-                                    <input type="hidden" name="last_item_on_page" value="1">
-                                {% endif %}
-                            </form>
-                        {% endif %}
+                        {% include "dashboard/partials/execution_actions.html" with workflow_run=run next_url=request.get_full_path last_item_on_page=execution_last_item_on_page %}
                     </div>
                 </article>
             {% endfor %}

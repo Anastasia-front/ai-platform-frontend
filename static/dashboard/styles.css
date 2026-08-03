@@ -1636,7 +1636,7 @@ h2 {
   gap: 12px;
 }
 
-.contract-result-card,
+.execution-detail-card,
 .raw-contract-output {
   display: grid;
   gap: 8px;
@@ -1646,23 +1646,23 @@ h2 {
   padding: 14px;
 }
 
-.contract-result-card.wide,
+.execution-detail-card.wide,
 .raw-contract-output {
   grid-column: 1 / -1;
 }
 
-.contract-result-card span {
+.execution-detail-card span {
   color: #647386;
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.contract-result-card strong {
+.execution-detail-card strong {
   color: #0f172a;
 }
 
-.contract-result-card p {
+.execution-detail-card p {
   color: #334155;
   white-space: pre-wrap;
 }
@@ -1674,8 +1674,24 @@ h2 {
   padding-right: 8px;
 }
 
-.contract-result-card small {
+.execution-detail-card small {
   color: #647386;
+}
+
+.streaming-card {
+  border-color: #aafed7;
+  background: #edfff3;
+}
+
+.streaming-card strong {
+  color: #006d38;
+  text-transform: capitalize;
+}
+
+.streaming-card summary {
+  color: #0b5330;
+  cursor: pointer;
+  font-weight: 900;
 }
 
 .risk-card {

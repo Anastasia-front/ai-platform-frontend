@@ -389,6 +389,30 @@ def list_workflow_run_events(token, run_id):
     return _request('GET', f'/runs/{run_id}/events', token=token)
 
 
+def stream_workflow_run(token, run_id):
+    try:
+        response = requests.get(
+            f'{BASE_API_URL}/runs/{run_id}/stream',
+            headers=_headers(token),
+            timeout=(REQUEST_TIMEOUT, WORKFLOW_TIMEOUT),
+            stream=True,
+        )
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else None
+        detail = _extract_error_detail(exc.response)
+        raise BackendAPIError(
+            detail or f'Backend request failed with status {status_code}.',
+            status_code=status_code,
+        ) from exc
+    except requests.Timeout as exc:
+        raise BackendAPIError('The backend is still taking too long to stream this run.') from exc
+    except requests.RequestException as exc:
+        raise BackendAPIError(str(exc)) from exc
+
+    return response
+
+
 def get_providers(token):
     return _request('GET', '/providers', token=token)
 

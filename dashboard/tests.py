@@ -879,6 +879,105 @@ class WorkflowViewTests(TestCase):
     @patch("dashboard.views.backend_api.list_workflow_runs")
     @patch("dashboard.views.backend_api.list_project_workflows")
     @patch("dashboard.views.backend_api.list_projects")
+    def test_executions_list_renders_template_name_when_recognized(
+        self,
+        mock_list_projects,
+        mock_list_project_workflows,
+        mock_list_workflow_runs,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_list_project_workflows.return_value = [
+            {"id": 8, "name": "Contract review"}
+        ]
+        mock_list_workflow_runs.return_value = [
+            {
+                "id": 14,
+                "workflow_id": 8,
+                "workflow_name": "Contract review",
+                "status": "completed",
+                "created_at": "2026-07-10T11:45:00Z",
+                "input": "Contract review REQUEST",
+                "output": "",
+            }
+        ]
+
+        response = self.client.get(reverse("dashboard:executions"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Contract review ·")
+
+    @patch("dashboard.views.backend_api.list_workflow_runs")
+    @patch("dashboard.views.backend_api.list_project_workflows")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_executions_list_omits_template_name_when_unrecognized(
+        self,
+        mock_list_projects,
+        mock_list_project_workflows,
+        mock_list_workflow_runs,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_list_project_workflows.return_value = []
+        mock_list_workflow_runs.return_value = [
+            {
+                "id": 15,
+                "workflow_id": 111,
+                "workflow_name": "Workspace generated workflow",
+                "status": "completed",
+                "created_at": "2026-07-10T11:45:00Z",
+                "input": "run the workflow",
+                "output": "Some free-form output.",
+            }
+        ]
+
+        response = self.client.get(reverse("dashboard:executions"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Execution #15")
+        self.assertNotContains(response, "None ·")
+
+    @patch("dashboard.views.backend_api.list_workflow_runs")
+    @patch("dashboard.views.backend_api.list_project_workflows")
+    @patch("dashboard.views.backend_api.list_projects")
+    def test_executions_list_delete_form_has_submit_button(
+        self,
+        mock_list_projects,
+        mock_list_project_workflows,
+        mock_list_workflow_runs,
+    ):
+        mock_list_projects.return_value = [{"id": 1, "name": "Research"}]
+        mock_list_project_workflows.return_value = []
+        mock_list_workflow_runs.return_value = [
+            {
+                "id": 16,
+                "workflow_id": 8,
+                "status": "completed",
+                "created_at": "2026-07-10T11:45:00Z",
+                "input": "",
+            }
+        ]
+
+        response = self.client.get(reverse("dashboard:executions"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, reverse("dashboard:delete_execution", args=[16]), count=1
+        )
+        self.assertContains(response, "Delete this execution permanently?")
+        self.assertContains(
+            response,
+            '<button type="submit" class="danger-button" data-loading-label="Deleting...">Delete</button>',
+            count=1,
+        )
+        # The delete redirect should preserve this page's filters/pagination
+        # rather than always bouncing to the unfiltered executions list.
+        self.assertContains(
+            response,
+            f'<input type="hidden" name="next" value="{reverse("dashboard:executions")}">',
+        )
+
+    @patch("dashboard.views.backend_api.list_workflow_runs")
+    @patch("dashboard.views.backend_api.list_project_workflows")
+    @patch("dashboard.views.backend_api.list_projects")
     def test_executions_list_renders_stop_for_running_runs(
         self,
         mock_list_projects,

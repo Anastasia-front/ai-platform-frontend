@@ -1384,6 +1384,13 @@ def workflow_template_type(workflow_run, output):
     return None
 
 
+def execution_template_name(workflow_run):
+    template = find_workflow_template(
+        workflow_template_type(workflow_run, workflow_run.get("output") or "")
+    )
+    return template["name"] if template else None
+
+
 def workflow_projects_by_id(token, projects):
     workflow_project_map = {}
     for project in projects:

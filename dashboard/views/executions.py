@@ -1,4 +1,7 @@
+import json
+
 from django.contrib import messages as django_messages
+from django.http import StreamingHttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -9,6 +12,7 @@ from .utils import (
     app_context,
     auth_required,
     execution_input_source,
+    execution_template_name,
     handle_api_error,
     redact_secrets,
     session_token,
@@ -53,6 +57,7 @@ def executions(request):
         for run in runs_page["items"]:
             run["project"] = workflow_project_map.get(run.get("workflow_id"))
             run["input_source"] = execution_input_source(run.get("input") or "")
+            run["template_name"] = execution_template_name(run)
 
         context.update(
             {
@@ -411,3 +416,32 @@ def execution_content_partial(request, run_id):
             "active_run_statuses": ACTIVE_RUN_STATUSES,
         },
     )
+
+
+@auth_required
+def execution_stream(request, run_id):
+    """Proxies the backend's live SSE stream for this run so the browser's
+    EventSource can connect same-origin (it can't send an Authorization
+    header itself)."""
+    token = session_token(request)
+
+    try:
+        upstream = backend_api.stream_workflow_run(token, run_id)
+    except backend_api.BackendAPIError as exc:
+        payload = json.dumps({"event": "failed", "message": exc.message})
+        return StreamingHttpResponse(
+            f"event: failed\ndata: {payload}\n\n",
+            content_type="text/event-stream",
+            status=exc.status_code or 502,
+        )
+
+    def stream():
+        with upstream:
+            for chunk in upstream.iter_content(chunk_size=None):
+                if chunk:
+                    yield chunk
+
+    response = StreamingHttpResponse(stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response

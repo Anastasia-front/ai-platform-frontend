@@ -35,6 +35,67 @@
     {% if executions_error %}
     <div class="notice danger-panel">{{ executions_error }}</div>
     {% elif workflow_run %}
+    <details class="execution-detail-card streaming-card" id="live-stream-{{ workflow_run.id }}" open>
+        <summary>Live progress</summary>
+        <div class="execution-event-list" id="live-stream-log-{{ workflow_run.id }}">
+            <p class="muted">Connecting…</p>
+        </div>
+    </details>
+    <script>
+        (function () {
+            var logEl = document.getElementById("live-stream-log-{{ workflow_run.id }}");
+            if (!logEl || typeof EventSource === "undefined") {
+                return;
+            }
+
+            var source = new EventSource("{% url 'dashboard:execution_stream' run_id=workflow_run.id %}");
+            var terminalEvents = ["completed", "failed", "cancelled"];
+            var eventNames = [
+                "queued", "started", "step_started", "step_completed", "step_failed",
+                "step_skipped", "tool_invoked", "retrieval_started", "retrieval_completed",
+                "partial_output", "completed", "failed", "cancelled",
+            ];
+
+            function renderEntry(data) {
+                if (logEl.querySelector("p.muted")) {
+                    logEl.innerHTML = "";
+                }
+                var article = document.createElement("article");
+                var strong = document.createElement("strong");
+                strong.textContent = data.event || "event";
+                var span = document.createElement("span");
+                span.textContent = data.timestamp || "";
+                var pre = document.createElement("pre");
+                pre.textContent = data.message || "";
+                article.appendChild(strong);
+                article.appendChild(span);
+                article.appendChild(pre);
+                logEl.appendChild(article);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            function handleFrame(evt) {
+                var data;
+                try {
+                    data = JSON.parse(evt.data);
+                } catch (e) {
+                    return;
+                }
+                renderEntry(data);
+                if (terminalEvents.indexOf(data.event) !== -1) {
+                    source.close();
+                }
+            }
+
+            eventNames.forEach(function (name) {
+                source.addEventListener(name, handleFrame);
+            });
+            source.onmessage = handleFrame;
+            source.onerror = function () {
+                source.close();
+            };
+        })();
+    </script>
     {% include "dashboard/partials/execution_content.html" %}
     {% endif %}
 </section>
