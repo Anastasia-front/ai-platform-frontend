@@ -64,6 +64,11 @@
                 <div><dt>failed</dt><dd>Processing failed. Check the error, then process again or re-upload.</dd></div>
             </dl>
             <p>Uploads are queued automatically. The Process action can queue processing again for an existing document when needed.</p>
+            <h3>Supported file types</h3>
+            <p>Supported extensions: <code>.pdf</code>, <code>.docx</code>, <code>.txt</code>, <code>.md</code>/<code>.markdown</code>, <code>.csv</code>, <code>.json</code>, <code>.log</code>, <code>.yaml</code>/<code>.yml</code>. Maximum upload size is 10 MB.</p>
+            <div class="guide-callout">
+                No OCR: text extraction reads the embedded text layer only. Scanned or image-only PDFs (photographed or scanned pages with no selectable text) will process without an error but produce empty or near-empty extracted text, so they won't be usable for chat retrieval or workflow inputs. Use a PDF with a real text layer, or run the file through OCR software yourself before uploading.
+            </div>
         </article>
 
         <article class="guide-card" id="providers">
