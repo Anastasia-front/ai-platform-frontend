@@ -1,5 +1,6 @@
 import json
 
+import requests
 from django.contrib import messages as django_messages
 from django.http import StreamingHttpResponse
 from django.shortcuts import redirect, render
@@ -111,6 +112,23 @@ EXECUTION_STATUS_FILTERS = {
     "failed": "Failed",
     "canceled": "Cancelled",
 }
+
+# Event types shown in the "Events" accordion/count -- lifecycle milestones
+# only. partial_output (LLM token chunks, dozens-to-hundreds per step) has
+# its own dedicated "Live progress" SSE panel and would otherwise flood this
+# list; step_skipped/workflow_queued/workflow_started are similarly noisy
+# for this summary view.
+EVENT_LOG_TYPES = {
+    "step_start",
+    "step_done",
+    "step_error",
+    "workflow_done",
+    "workflow_failed",
+}
+
+
+def _for_event_log(events):
+    return [e for e in events if (e.get("event_type") or "event") in EVENT_LOG_TYPES]
 
 
 def _positive_int(value, default):
@@ -354,7 +372,7 @@ def execution_detail(request, run_id):
         workflow_run = backend_api.get_workflow_run(session_token(request), run_id)
         events = backend_api.list_workflow_run_events(session_token(request), run_id)
         workflow_run = redact_secrets(workflow_run)
-        events = redact_secrets(events)
+        events = _for_event_log(redact_secrets(events))
         context.update(
             {
                 "workflow_run": workflow_run,
@@ -399,7 +417,7 @@ def execution_content_partial(request, run_id):
         workflow_run = backend_api.get_workflow_run(session_token(request), run_id)
         events = backend_api.list_workflow_run_events(session_token(request), run_id)
         workflow_run = redact_secrets(workflow_run)
-        events = redact_secrets(events)
+        events = _for_event_log(redact_secrets(events))
         workflow_run_summary = summarize_workflow_run(workflow_run, events)
     except backend_api.BackendAPIError:
         workflow_run = None
@@ -436,10 +454,16 @@ def execution_stream(request, run_id):
         )
 
     def stream():
-        with upstream:
-            for chunk in upstream.iter_content(chunk_size=None):
-                if chunk:
-                    yield chunk
+        try:
+            with upstream:
+                for chunk in upstream.iter_content(chunk_size=None):
+                    if chunk:
+                        yield chunk
+        except (requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectionError):
+            # The upstream connection dropped mid-stream (e.g. an idle proxy
+            # timeout). End the SSE stream cleanly instead of surfacing a 500 --
+            # the client's EventSource will just see the connection close.
+            return
 
     response = StreamingHttpResponse(stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"

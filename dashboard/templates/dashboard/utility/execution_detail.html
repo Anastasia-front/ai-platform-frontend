@@ -10,7 +10,7 @@
             <p class="eyebrow">Executions / Logs</p>
             <h1>Execution #{{ workflow_run.id }}</h1>
             {% if workflow_run %}
-            <p class="muted">{{ workflow_run_summary.template_name|default:"Workflow" }} · {{ workflow_run.status }} · {{ workflow_run.created_at|human_datetime }}</p>
+            <p class="muted">{{ workflow_run_summary.template_name|default:"Workflow" }} · {% include "dashboard/partials/execution_status.html" %} · {{ workflow_run.created_at|human_datetime }}</p>
             {% if workflow_run_summary.input_sources %}
             <div class="execution-input-sources">
                 {% for source in workflow_run_summary.input_sources %}
@@ -35,7 +35,7 @@
     {% if executions_error %}
     <div class="notice danger-panel">{{ executions_error }}</div>
     {% elif workflow_run %}
-    <details class="execution-detail-card streaming-card" id="live-stream-{{ workflow_run.id }}" open>
+    <details class="execution-detail-card streaming-card" id="live-stream-{{ workflow_run.id }}" {% if workflow_run.status in active_run_statuses %}open{% endif %}>
         <summary>Live progress</summary>
         <div class="execution-event-list" id="live-stream-log-{{ workflow_run.id }}">
             <p class="muted">Connecting…</p>
@@ -44,33 +44,102 @@
     <script>
         (function () {
             var logEl = document.getElementById("live-stream-log-{{ workflow_run.id }}");
+            var headerStatusEl = document.getElementById("run-header-status-{{ workflow_run.id }}");
+            var detailsEl = document.getElementById("live-stream-{{ workflow_run.id }}");
             if (!logEl || typeof EventSource === "undefined") {
                 return;
             }
 
             var source = new EventSource("{% url 'dashboard:execution_stream' run_id=workflow_run.id %}");
             var terminalEvents = ["completed", "failed", "cancelled"];
+            var terminalStatusByEvent = {
+                completed: "completed",
+                failed: "failed",
+                cancelled: "canceled",
+            };
             var eventNames = [
                 "queued", "started", "step_started", "step_completed", "step_failed",
                 "step_skipped", "tool_invoked", "retrieval_started", "retrieval_completed",
                 "partial_output", "completed", "failed", "cancelled",
             ];
+            var seenEventIds = {};
+            var closedByUs = false;
+            var reconnectAttempts = 0;
+            var maxReconnectAttempts = 5;
+            var stepStreams = {};
 
-            function renderEntry(data) {
+            function clearPlaceholder() {
                 if (logEl.querySelector("p.muted")) {
                     logEl.innerHTML = "";
                 }
+            }
+
+            function pad(value) {
+                return String(value).padStart(2, "0");
+            }
+
+            function formatTimestamp(iso) {
+                if (!iso) {
+                    return "";
+                }
+                var date = new Date(iso);
+                if (isNaN(date.getTime())) {
+                    return iso;
+                }
+                return (
+                    pad(date.getDate()) + "/" + pad(date.getMonth() + 1) + "/" + date.getFullYear() +
+                    " - " + pad(date.getHours()) + ":" + pad(date.getMinutes())
+                );
+            }
+
+            function renderEntry(data) {
+                clearPlaceholder();
                 var article = document.createElement("article");
                 var strong = document.createElement("strong");
                 strong.textContent = data.event || "event";
                 var span = document.createElement("span");
-                span.textContent = data.timestamp || "";
+                span.textContent = formatTimestamp(data.timestamp);
                 var pre = document.createElement("pre");
                 pre.textContent = data.message || "";
                 article.appendChild(strong);
                 article.appendChild(span);
                 article.appendChild(pre);
                 logEl.appendChild(article);
+                logEl.scrollTop = logEl.scrollHeight;
+                return { article: article, pre: pre };
+            }
+
+            function renderStepStart(data) {
+                clearPlaceholder();
+                var article = document.createElement("article");
+                var strong = document.createElement("strong");
+                strong.textContent = data.message || "Step started";
+                var span = document.createElement("span");
+                span.textContent = formatTimestamp(data.timestamp);
+                var pre = document.createElement("pre");
+                pre.className = "streaming-output";
+                article.appendChild(strong);
+                article.appendChild(span);
+                article.appendChild(pre);
+                logEl.appendChild(article);
+                logEl.scrollTop = logEl.scrollHeight;
+                if (data.step_id != null) {
+                    stepStreams[data.step_id] = pre;
+                }
+            }
+
+            function renderPartialOutput(data) {
+                var pre = data.step_id != null ? stepStreams[data.step_id] : null;
+                if (!pre) {
+                    // No matching step_started seen (e.g. joined mid-step) --
+                    // fall back to a standalone growing entry for this step.
+                    var rendered = renderEntry({ event: "output", timestamp: data.timestamp, message: "" });
+                    pre = rendered.pre;
+                    if (data.step_id != null) {
+                        stepStreams[data.step_id] = pre;
+                    }
+                }
+                pre.textContent += data.delta || "";
                 logEl.scrollTop = logEl.scrollHeight;
             }
 
@@ -81,8 +150,28 @@
                 } catch (e) {
                     return;
                 }
-                renderEntry(data);
+                reconnectAttempts = 0;
+                if (data.event_id != null) {
+                    if (seenEventIds[data.event_id]) {
+                        return;
+                    }
+                    seenEventIds[data.event_id] = true;
+                }
+                if (data.event === "step_started") {
+                    renderStepStart(data);
+                } else if (data.event === "partial_output") {
+                    renderPartialOutput(data);
+                } else {
+                    renderEntry(data);
+                }
                 if (terminalEvents.indexOf(data.event) !== -1) {
+                    if (headerStatusEl && terminalStatusByEvent[data.event]) {
+                        headerStatusEl.textContent = terminalStatusByEvent[data.event];
+                    }
+                    if (detailsEl) {
+                        detailsEl.open = false;
+                    }
+                    closedByUs = true;
                     source.close();
                 }
             }
@@ -92,7 +181,23 @@
             });
             source.onmessage = handleFrame;
             source.onerror = function () {
-                source.close();
+                if (closedByUs) {
+                    return;
+                }
+                reconnectAttempts += 1;
+                if (reconnectAttempts > maxReconnectAttempts) {
+                    closedByUs = true;
+                    source.close();
+                    clearPlaceholder();
+                    var notice = document.createElement("p");
+                    notice.className = "muted";
+                    notice.textContent = "Live stream unavailable — status will keep refreshing below.";
+                    logEl.appendChild(notice);
+                    return;
+                }
+                // Otherwise let EventSource's built-in retry reconnect; the
+                // backend replays already-seen events, and event_id deduplication
+                // above keeps that from duplicating rows.
             };
         })();
     </script>

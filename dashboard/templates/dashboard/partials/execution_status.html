@@ -1,6 +1,6 @@
 {% if workflow_run %}
 <strong
-    id="execution-status-{{ workflow_run.id }}"
+    id="{{ status_id_prefix|default:"execution-status" }}-{{ workflow_run.id }}"
     class="status-badge status-{{ workflow_run.status }}"
     {% if workflow_run.status in active_run_statuses %}
     hx-get="{% url 'dashboard:execution_status_partial' run_id=workflow_run.id %}"
