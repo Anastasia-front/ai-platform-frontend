@@ -528,8 +528,27 @@ body.sidebar-resizing {
   min-height: 36px;
 }
 
+.chat-header-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  min-width: 0;
+}
+
+.chat-title-block {
+  min-width: 0;
+}
+
+.header-action-group {
+  align-items: center;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 6px;
+}
+
 .rename-panel {
-  margin-top: 10px;
+  position: relative;
 }
 
 .rename-panel summary {
@@ -537,14 +556,24 @@ body.sidebar-resizing {
   cursor: pointer;
   font-size: 13px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .rename-form {
+  background: #ffffff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
   display: grid;
-  grid-template-columns: minmax(180px, 320px) auto auto;
   gap: 8px;
+  grid-template-columns: minmax(180px, 320px) auto auto;
   margin-top: 8px;
   max-width: 560px;
+  padding: 12px;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 5;
 }
 
 .rename-form input {
@@ -2902,6 +2931,10 @@ h2 {
   .page-heading,
   .chat-header {
     display: grid;
+  }
+
+  .rename-form {
+    max-width: calc(100vw - 48px);
   }
 
   .guide-hero,

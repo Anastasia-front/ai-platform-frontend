@@ -19,7 +19,9 @@ function isNearMessageBottom() {
   if (!messages) {
     return false;
   }
-  return messages.scrollHeight - messages.scrollTop - messages.clientHeight < 80;
+  return (
+    messages.scrollHeight - messages.scrollTop - messages.clientHeight < 80
+  );
 }
 
 function scrollMessagesIfNearBottom(wasNearBottom) {
@@ -29,11 +31,13 @@ function scrollMessagesIfNearBottom(wasNearBottom) {
 }
 
 function autosizeChatTextarea(textarea) {
-  const maxHeight = Number.parseFloat(getComputedStyle(textarea).maxHeight) || 320;
+  const maxHeight =
+    Number.parseFloat(getComputedStyle(textarea).maxHeight) || 320;
   textarea.style.height = "auto";
   const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
   textarea.style.height = `${nextHeight}px`;
-  textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  textarea.style.overflowY =
+    textarea.scrollHeight > maxHeight ? "auto" : "hidden";
 }
 
 function scheduleAutosizeChatTextarea(textarea) {
@@ -41,16 +45,20 @@ function scheduleAutosizeChatTextarea(textarea) {
 }
 
 function removeReadyDocumentProcessActions(root = document) {
-  root.querySelectorAll('[data-document-status][data-document-has-text="true"]').forEach((status) => {
-    const documentId = status.dataset.documentId;
-    if (!documentId) {
-      return;
-    }
+  root
+    .querySelectorAll('[data-document-status][data-document-has-text="true"]')
+    .forEach((status) => {
+      const documentId = status.dataset.documentId;
+      if (!documentId) {
+        return;
+      }
 
-    document
-      .querySelectorAll(`[data-document-process-form][data-document-id="${CSS.escape(documentId)}"]`)
-      .forEach((form) => form.remove());
-  });
+      document
+        .querySelectorAll(
+          `[data-document-process-form][data-document-id="${CSS.escape(documentId)}"]`,
+        )
+        .forEach((form) => form.remove());
+    });
 }
 
 function appendOptimisticMessage(content, optimisticId) {
@@ -107,13 +115,23 @@ function renderMessageProgress(message, events, state) {
     return;
   }
 
-  const rows = events.slice(-4).map((event) => {
-    const status = event.event || "started";
-    const icon = status.includes("completed") || status === "completed" ? "✓" :
-      status.includes("failed") || status === "failed" ? "!" :
-      status.includes("started") || status === "started" || status === "queued" ? "●" : "○";
-    return `<li class="message-progress-row message-progress-${escapeHtml(status)}"><span>${icon}</span><span>${escapeHtml(event.message || status.replace(/_/g, " "))}</span></li>`;
-  }).join("");
+  const rows = events
+    .slice(-4)
+    .map((event) => {
+      const status = event.event || "started";
+      const icon =
+        status.includes("completed") || status === "completed"
+          ? "✓"
+          : status.includes("failed") || status === "failed"
+            ? "!"
+            : status.includes("started") ||
+                status === "started" ||
+                status === "queued"
+              ? "●"
+              : "○";
+      return `<li class="message-progress-row message-progress-${escapeHtml(status)}"><span>${icon}</span><span>${escapeHtml(event.message || status.replace(/_/g, " "))}</span></li>`;
+    })
+    .join("");
 
   bubble.innerHTML = `
     <div class="message-progress">
@@ -129,7 +147,9 @@ function renderMessageProgress(message, events, state) {
 function renderParagraphs(content) {
   return (content || "")
     .split(/\n{2,}/)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+    .map(
+      (paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`,
+    )
     .join("");
 }
 
@@ -141,7 +161,7 @@ function renderMessageActivity(events) {
   return `<div class="message-stream-status">${escapeHtml(latest.message || latest.event.replace(/_/g, " "))}</div>`;
 }
 
-function renderMessageFinal(message, state) {
+function renderMessageFinal(message, state, content) {
   const bubble = message.querySelector(".message-bubble");
   if (!bubble) {
     return;
@@ -154,6 +174,12 @@ function renderMessageFinal(message, state) {
         <p class="message-progress-error">${escapeHtml(state.error)}</p>
       </div>
     `;
+    if (content) {
+      bubble.insertAdjacentHTML(
+        "beforeend",
+        `<button type="button" class="message-regenerate-btn" data-regenerate-message data-regenerate-content="${escapeHtml(content)}">↻ Retry</button>`,
+      );
+    }
     return;
   }
 
@@ -202,7 +228,10 @@ function parseSseFrames(buffer, onEvent) {
         const payload = JSON.parse(dataLines.join("\n"));
         onEvent({ event: payload.event || eventName, ...payload });
       } catch (error) {
-        onEvent({ event: "malformed", message: "Skipped a malformed message event." });
+        onEvent({
+          event: "malformed",
+          message: "Skipped a malformed message event.",
+        });
       }
     }
     boundary = buffer.indexOf("\n\n");
@@ -224,8 +253,15 @@ async function startMessageStream(form, content) {
     form.dataset.emptyStateHtml = emptyStateHtml;
   }
 
-  const pendingMessage = document.querySelector(`.message.assistant.pending[data-optimistic-id="${CSS.escape(optimisticId)}"]`);
-  const state = { title: "Generating response...", content: "", sources: [], error: "" };
+  const pendingMessage = document.querySelector(
+    `.message.assistant.pending[data-optimistic-id="${CSS.escape(optimisticId)}"]`,
+  );
+  const state = {
+    title: "Generating response...",
+    content: "",
+    sources: [],
+    error: "",
+  };
   const events = [];
   renderMessageProgress(pendingMessage, events, state);
 
@@ -243,7 +279,10 @@ async function startMessageStream(form, content) {
     stopButton.hidden = false;
     stopButton.disabled = false;
   }
-  window.DashboardLoadingButtons?.setLoading(button, button?.dataset.loadingLabel || "Sending...");
+  window.DashboardLoadingButtons?.setLoading(
+    button,
+    button?.dataset.loadingLabel || "Sending...",
+  );
 
   const body = new FormData();
   body.append("content", content);
@@ -273,7 +312,9 @@ async function startMessageStream(form, content) {
     while (!done) {
       const result = await reader.read();
       done = result.done;
-      buffer += decoder.decode(result.value || new Uint8Array(), { stream: !done });
+      buffer += decoder.decode(result.value || new Uint8Array(), {
+        stream: !done,
+      });
       buffer = parseSseFrames(buffer, (event) => {
         if (abortController.signal.aborted) {
           return;
@@ -298,9 +339,10 @@ async function startMessageStream(form, content) {
         events.push(event);
         if (["completed", "failed", "cancelled"].includes(event.event)) {
           if (event.event !== "completed") {
-            state.error = state.error || event.message || "Message did not complete.";
+            state.error =
+              state.error || event.message || "Message did not complete.";
           }
-          renderMessageFinal(pendingMessage, state);
+          renderMessageFinal(pendingMessage, state, content);
         } else {
           renderMessageProgress(pendingMessage, events, state);
         }
@@ -323,7 +365,7 @@ async function startMessageStream(form, content) {
       return;
     }
     state.error = error.message || "Message stream disconnected.";
-    renderMessageFinal(pendingMessage, state);
+    renderMessageFinal(pendingMessage, state, content);
   } finally {
     window.DashboardLoadingButtons?.restore(button);
     if (stopButton) {
@@ -342,6 +384,19 @@ document.addEventListener("DOMContentLoaded", () => {
   scrollMessagesToBottom();
   removeReadyDocumentProcessActions();
 
+  document.querySelectorAll("details.rename-panel").forEach((panel) => {
+    panel.addEventListener("toggle", () => {
+      if (!panel.open) {
+        return;
+      }
+      document.querySelectorAll("details.rename-panel").forEach((other) => {
+        if (other !== panel) {
+          other.removeAttribute("open");
+        }
+      });
+    });
+  });
+
   document.querySelectorAll(".flash").forEach((flash) => {
     window.setTimeout(() => {
       flash.remove();
@@ -356,27 +411,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     autosizeChatTextarea(textarea);
-    textarea.addEventListener("input", () => scheduleAutosizeChatTextarea(textarea));
+    textarea.addEventListener("input", () =>
+      scheduleAutosizeChatTextarea(textarea),
+    );
 
     stopButton?.addEventListener("click", () => {
-      if (form.dataset.messageStreaming === "true" && form._messageAbortController) {
+      if (
+        form.dataset.messageStreaming === "true" &&
+        form._messageAbortController
+      ) {
         stopButton.disabled = true;
         form._messageAbortController.abort();
       }
     });
 
-    form.addEventListener("submit", (event) => {
-      if (!form.dataset.messageStreamUrl) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      const content = textarea.value.trim();
-      if (content) {
-        startMessageStream(form, content);
-      }
-    }, true);
+    form.addEventListener(
+      "submit",
+      (event) => {
+        if (!form.dataset.messageStreamUrl) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        const content = textarea.value.trim();
+        if (content) {
+          startMessageStream(form, content);
+        }
+      },
+      true,
+    );
 
     textarea.addEventListener("keydown", (event) => {
       if (event.key === "Enter" && !event.shiftKey) {
@@ -401,7 +465,10 @@ document.addEventListener("DOMContentLoaded", () => {
           .map((file) => `<li>${escapeHtml(file.name)}</li>`)
           .join("");
         fileList.hidden = false;
-        status.textContent = files.length === 1 ? "Upload selected file" : `Upload ${files.length} selected files`;
+        status.textContent =
+          files.length === 1
+            ? "Upload selected file"
+            : `Upload ${files.length} selected files`;
         status.classList.add("ready");
         button.disabled = false;
       } else {
@@ -416,7 +483,6 @@ document.addEventListener("DOMContentLoaded", () => {
     input.addEventListener("change", updateUploadState);
     updateUploadState();
   });
-
 });
 
 document.body.addEventListener("htmx:configRequest", (event) => {
@@ -449,7 +515,10 @@ document.body.addEventListener("htmx:configRequest", (event) => {
   autosizeChatTextarea(textarea);
 
   const button = form.querySelector('button[type="submit"]');
-  window.DashboardLoadingButtons?.setLoading(button, button?.dataset.loadingLabel || "Sending...");
+  window.DashboardLoadingButtons?.setLoading(
+    button,
+    button?.dataset.loadingLabel || "Sending...",
+  );
 });
 
 document.body.addEventListener("htmx:afterSwap", (event) => {
@@ -494,4 +563,20 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
   delete form.dataset.pendingContent;
   delete form.dataset.optimisticId;
   delete form.dataset.emptyStateHtml;
+});
+
+document.body.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-regenerate-message]");
+  if (!button) {
+    return;
+  }
+
+  const content = button.dataset.regenerateContent;
+  const form = document.querySelector("[data-chat-composer]");
+  if (!content || !form || form.dataset.messageStreaming === "true") {
+    return;
+  }
+
+  button.closest(".message")?.remove();
+  startMessageStream(form, content);
 });

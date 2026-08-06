@@ -11,41 +11,45 @@
         </div>
     {% elif active_project %}
         <header class="chat-header">
-            <div>
-                <p class="eyebrow">{{ active_project.name }}</p>
-                <h1>{% if active_chat %}{{ active_chat.title }}{% else %}Start a chat{% endif %}</h1>
-                <details class="rename-panel">
-                    <summary>Rename project</summary>
-                    <form method="post" action="{% url 'dashboard:rename_project' active_project.slug %}" class="rename-form" data-loading-form>
-                        {% csrf_token %}
-                        <input type="text" name="name" value="{{ active_project.name }}" maxlength="255" required>
-                        <button type="submit" data-loading-label="Saving...">Save</button>
-                        <button type="button" class="secondary" onclick="this.closest('details').removeAttribute('open')">Cancel</button>
-                    </form>
-                </details>
+            <div class="chat-header-title">
+                <div class="chat-title-block">
+                    <p class="eyebrow">{{ active_project.name }}</p>
+                    <h1>{% if active_chat %}{{ active_chat.title }}{% else %}Start a chat{% endif %}</h1>
+                </div>
+            </div>
+            <div class="header-actions">
                 {% if active_chat %}
-                    <details class="rename-panel">
-                        <summary>Rename chat</summary>
-                        <form method="post" action="{% url 'dashboard:rename_chat' active_project.slug active_chat.slug %}" class="rename-form" data-loading-form>
+                    <div class="header-action-group">
+                        <form method="post" action="{% url 'dashboard:delete_chat' active_project.slug active_chat.slug %}">
                             {% csrf_token %}
-                            <input type="text" name="title" value="{{ active_chat.title }}" maxlength="255" required>
+                            <button type="submit" class="danger-button">Delete chat</button>
+                        </form>
+                        <details class="rename-panel">
+                            <summary>Rename chat</summary>
+                            <form method="post" action="{% url 'dashboard:rename_chat' active_project.slug active_chat.slug %}" class="rename-form" data-loading-form>
+                                {% csrf_token %}
+                                <input type="text" name="title" value="{{ active_chat.title }}" maxlength="255" required>
+                                <button type="submit" data-loading-label="Saving...">Save</button>
+                                <button type="button" class="secondary" onclick="this.closest('details').removeAttribute('open')">Cancel</button>
+                            </form>
+                        </details>
+                    </div>
+                {% endif %}
+                <div class="header-action-group">
+                    <form method="post" action="{% url 'dashboard:delete_project' active_project.slug %}">
+                        {% csrf_token %}
+                        <button type="submit" class="danger-button">Delete project</button>
+                    </form>
+                    <details class="rename-panel">
+                        <summary>Rename project</summary>
+                        <form method="post" action="{% url 'dashboard:rename_project' active_project.slug %}" class="rename-form" data-loading-form>
+                            {% csrf_token %}
+                            <input type="text" name="name" value="{{ active_project.name }}" maxlength="255" required>
                             <button type="submit" data-loading-label="Saving...">Save</button>
                             <button type="button" class="secondary" onclick="this.closest('details').removeAttribute('open')">Cancel</button>
                         </form>
                     </details>
-                {% endif %}
-            </div>
-            <div class="header-actions">
-                {% if active_chat %}
-                    <form method="post" action="{% url 'dashboard:delete_chat' active_project.slug active_chat.slug %}">
-                        {% csrf_token %}
-                        <button type="submit" class="danger-button">Delete Chat</button>
-                    </form>
-                {% endif %}
-                <form method="post" action="{% url 'dashboard:delete_project' active_project.slug %}">
-                    {% csrf_token %}
-                    <button type="submit" class="danger-button">Delete Project</button>
-                </form>
+                </div>
             </div>
         </header>
 
