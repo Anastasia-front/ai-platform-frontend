@@ -11,18 +11,21 @@
             <h1>Providers</h1>
         </div>
         {% if provider_data %}
-            <div class="provider-current">
-                <span>Chat: <strong>{{ provider_data.current.chat.provider }}</strong> · {{ provider_data.current.chat.model|default:"No model" }}</span>
-                <span>Embeddings: <strong>{{ provider_data.current.embeddings.provider }}</strong> · {{ provider_data.current.embeddings.model|default:"No model" }}</span>
-            </div>
+        <div class="provider-current" id="provider-current">
+            <span>Chat: <strong>{{ provider_data.current.chat.provider }}</strong> · {{
+                provider_data.current.chat.model|default:"No model" }}</span>
+            <span>Embeddings: <strong>{{ provider_data.current.embeddings.provider }}</strong> · {{
+                provider_data.current.embeddings.model|default:"No model" }}</span>
+        </div>
         {% endif %}
     </header>
 
     {% if provider_error %}
-        <div class="notice danger-panel">{{ provider_error }}</div>
+    <div class="notice danger-panel">{{ provider_error }}</div>
     {% endif %}
 
     {% if provider_data %}
+    <div id="provider-panel">
         <div class="provider-grid">
             <section class="provider-section">
                 <div class="section-heading">
@@ -31,25 +34,27 @@
                 </div>
                 <div class="provider-card-grid">
                     {% for provider in provider_data.chat %}
-                        <article class="provider-card {% if provider.active %}active{% endif %}">
-                            <div>
-                                <h3>{{ provider.name }}</h3>
-                                <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active %}Active{% else %}Available{% endif %}</span>
-                            </div>
-                            <p>{{ provider.default_model|default:"No default model saved" }}</p>
-                            <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
-                            <div class="provider-card-actions">
-                                <span>{% if provider.api_key_configured %}Key saved{% elif provider.supports_api_key %}No key{% else %}Local/no key{% endif %}</span>
-                                <form method="post" action="{% url 'dashboard:check_provider_health' %}" data-loading-form>
-                                    {% csrf_token %}
-                                    <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
-                                    <input type="hidden" name="kind" value="chat">
-                                    <input type="hidden" name="provider" value="{{ provider.name }}">
-                                    <input type="hidden" name="model" value="{{ provider.default_model }}">
-                                    <button type="submit" class="secondary" data-loading-label="Checking...">Check</button>
-                                </form>
-                            </div>
-                        </article>
+                    <article class="provider-card {% if provider.active %}active{% endif %}">
+                        <div>
+                            <h3>{{ provider.name }}</h3>
+                            <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active
+                                %}Active{% else %}Available{% endif %}</span>
+                        </div>
+                        <p>{{ provider.default_model|default:"No default model saved" }}</p>
+                        <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
+                        <div class="provider-card-actions">
+                            <span>{% if provider.api_key_configured %}Key saved{% elif provider.supports_api_key %}No
+                                key{% else %}Local/no key{% endif %}</span>
+                            <form method="post" action="{% url 'dashboard:check_provider_health' %}" data-loading-form>
+                                {% csrf_token %}
+                                <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
+                                <input type="hidden" name="kind" value="chat">
+                                <input type="hidden" name="provider" value="{{ provider.name }}">
+                                <input type="hidden" name="model" value="{{ provider.default_model }}">
+                                <button type="submit" class="secondary" data-loading-label="Checking...">Check</button>
+                            </form>
+                        </div>
+                    </article>
                     {% endfor %}
                 </div>
             </section>
@@ -61,46 +66,46 @@
                 </div>
                 <div class="provider-card-grid">
                     {% for provider in provider_data.embeddings %}
-                        <article class="provider-card {% if provider.active %}active{% endif %}">
-                            <div>
-                                <h3>{{ provider.name }}</h3>
-                                <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active %}Active{% else %}Available{% endif %}</span>
-                            </div>
-                            <p>{{ provider.default_model|default:"No default model saved" }}</p>
-                            <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
-                            <div class="provider-card-actions">
-                                <span>{% if provider.api_key_configured %}Key saved{% elif provider.supports_api_key %}No key{% else %}Local/no key{% endif %}</span>
-                                <form method="post" action="{% url 'dashboard:check_provider_health' %}" data-loading-form>
-                                    {% csrf_token %}
-                                    <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
-                                    <input type="hidden" name="kind" value="embedding">
-                                    <input type="hidden" name="provider" value="{{ provider.name }}">
-                                    <input type="hidden" name="model" value="{{ provider.default_model }}">
-                                    <input type="hidden" name="dimensions" value="{{ provider_data.current.embeddings.dimensions }}">
-                                    <button type="submit" class="secondary" data-loading-label="Checking...">Check</button>
-                                </form>
-                            </div>
-                        </article>
+                    <article class="provider-card {% if provider.active %}active{% endif %}">
+                        <div>
+                            <h3>{{ provider.name }}</h3>
+                            <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active
+                                %}Active{% else %}Available{% endif %}</span>
+                        </div>
+                        <p>{{ provider.default_model|default:"No default model saved" }}</p>
+                        <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
+                        <div class="provider-card-actions">
+                            <span>{% if provider.api_key_configured %}Key saved{% elif provider.supports_api_key %}No
+                                key{% else %}Local/no key{% endif %}</span>
+                            <form method="post" action="{% url 'dashboard:check_provider_health' %}" data-loading-form>
+                                {% csrf_token %}
+                                <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
+                                <input type="hidden" name="kind" value="embedding">
+                                <input type="hidden" name="provider" value="{{ provider.name }}">
+                                <input type="hidden" name="model" value="{{ provider.default_model }}">
+                                <input type="hidden" name="dimensions"
+                                    value="{{ provider_data.current.embeddings.dimensions }}">
+                                <button type="submit" class="secondary" data-loading-label="Checking...">Check</button>
+                            </form>
+                        </div>
+                    </article>
                     {% endfor %}
                 </div>
             </section>
         </div>
 
         {% if provider_health_result %}
-            <div class="provider-result {% if provider_health_result.healthy %}success{% else %}failed{% endif %}">
-                <strong>{{ provider_health_result.kind }} / {{ provider_health_result.provider }}</strong>
-                <span>{{ provider_health_result.model }} · {{ provider_health_result.latency_ms }} ms</span>
-                <p>{{ provider_health_result.message }}</p>
-            </div>
+        <div class="provider-result {% if provider_health_result.healthy %}success{% else %}failed{% endif %}">
+            <strong>{{ provider_health_result.kind }} / {{ provider_health_result.provider }}</strong>
+            <span>{{ provider_health_result.model }} · {{ provider_health_result.latency_ms }} ms</span>
+            <p>{{ provider_health_result.message }}</p>
+        </div>
         {% endif %}
 
         <div class="provider-control-grid">
-            <form id="chat-defaults-form" method="post" action="{% url 'dashboard:update_chat_provider' %}" class="provider-form" data-provider-form="chat"
-                hx-post="{% url 'dashboard:update_chat_provider' %}"
-                hx-select="#chat-defaults-form"
-                hx-target="#chat-defaults-form"
-                hx-swap="outerHTML"
-                data-loading-form>
+            <form id="chat-defaults-form" method="post" action="{% url 'dashboard:update_chat_provider' %}"
+                class="provider-form" data-provider-form="chat" hx-post="{% url 'dashboard:update_chat_provider' %}"
+                hx-select="#provider-panel" hx-target="#provider-panel" hx-swap="outerHTML" data-loading-form>
                 {% csrf_token %}
                 <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
                 <h2>Chat Defaults</h2>
@@ -108,36 +113,40 @@
                     Provider
                     <select name="provider" required data-provider-select>
                         {% for provider in provider_data.chat %}
-                            <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name }}</option>
+                        <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name
+                            }}</option>
                         {% endfor %}
                     </select>
                 </label>
                 <label>
                     Model
-                    <input type="text" name="model" value="{{ provider_data.current.chat.model }}" placeholder="e.g. openai/gpt-4o-mini" required data-model-input>
+                    <input type="text" name="model" value="{{ provider_data.current.chat.model }}"
+                        placeholder="e.g. openai/gpt-4o-mini" required data-model-input>
                 </label>
                 <label>
                     Fallback model
-                    <input type="text" name="fallback_model" value="{{ provider_data.current.chat.fallback_model|default:'' }}" placeholder="Optional fallback model" data-fallback-model-input>
+                    <input type="text" name="fallback_model"
+                        value="{{ provider_data.current.chat.fallback_model|default:'' }}"
+                        placeholder="Optional fallback model" data-fallback-model-input>
                 </label>
                 <datalist id="chat-model-suggestions"></datalist>
                 <label>
                     Base URL
-                    <input type="url" name="base_url" value="{{ provider_data.current.chat.base_url }}" placeholder="http://ollama.ai-platform.internal:11434" required data-base-url-input>
+                    <input type="url" name="base_url" value="{{ provider_data.current.chat.base_url }}"
+                        placeholder="http://ollama.ai-platform.internal:11434" required data-base-url-input>
                 </label>
                 <label>
                     API key
-                    <input type="password" name="api_key" placeholder="{% if provider_data.current.chat.api_key_configured %}Saved. Leave blank to keep current key.{% else %}Paste key for remote providers{% endif %}">
+                    <input type="password" name="api_key"
+                        placeholder="{% if provider_data.current.chat.api_key_configured %}Saved. Leave blank to keep current key.{% else %}Paste key for remote providers{% endif %}">
                 </label>
                 <button type="submit">Save Chat Defaults</button>
             </form>
 
-            <form id="embedding-defaults-form" method="post" action="{% url 'dashboard:update_embedding_provider' %}" class="provider-form" data-provider-form="embedding"
-                hx-post="{% url 'dashboard:update_embedding_provider' %}"
-                hx-select="#embedding-defaults-form"
-                hx-target="#embedding-defaults-form"
-                hx-swap="outerHTML"
-                data-loading-form>
+            <form id="embedding-defaults-form" method="post" action="{% url 'dashboard:update_embedding_provider' %}"
+                class="provider-form" data-provider-form="embedding"
+                hx-post="{% url 'dashboard:update_embedding_provider' %}" hx-select="#provider-panel"
+                hx-target="#provider-panel" hx-swap="outerHTML" data-loading-form>
                 {% csrf_token %}
                 <input type="hidden" name="project_slug" value="{{ active_project_slug }}">
                 <h2>Embedding Defaults</h2>
@@ -145,80 +154,86 @@
                     Provider
                     <select name="provider" required data-provider-select>
                         {% for provider in provider_data.embeddings %}
-                            <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name }}</option>
+                        <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name
+                            }}</option>
                         {% endfor %}
                     </select>
                 </label>
                 <label>
-                    Model 
+                    Model
                     <!-- <span class="field-note">Type any model supported by your provider.</span> -->
-                    <input type="text" name="model" value="{{ provider_data.current.embeddings.model }}" placeholder="e.g. text-embedding-004" required data-model-input>
+                    <input type="text" name="model" value="{{ provider_data.current.embeddings.model }}"
+                        placeholder="e.g. text-embedding-004" required data-model-input>
                 </label>
                 <datalist id="embedding-model-suggestions"></datalist>
                 <label>
                     Dimensions
-                    <input type="number" name="dimensions" min="1" value="{{ provider_data.current.embeddings.dimensions }}" required data-dimensions-input>
+                    <input type="text" name="dimensions" value="768 — fixed (the backend only supports this dimension)"
+                        required disabled data-dimensions-input>
                 </label>
                 <label>
                     Base URL
-                    <input type="url" name="base_url" value="{{ provider_data.current.embeddings.base_url }}" placeholder="http://ollama.ai-platform.internal:11434" required data-base-url-input>
+                    <input type="url" name="base_url" value="{{ provider_data.current.embeddings.base_url }}"
+                        placeholder="http://ollama.ai-platform.internal:11434" required data-base-url-input>
                 </label>
                 <label>
                     API key
-                    <input type="password" name="api_key" placeholder="{% if provider_data.current.embeddings.api_key_configured %}Saved. Leave blank to keep current key.{% else %}Paste key for remote providers{% endif %}">
+                    <input type="password" name="api_key"
+                        placeholder="{% if provider_data.current.embeddings.api_key_configured %}Saved. Leave blank to keep current key.{% else %}Paste key for remote providers{% endif %}">
                 </label>
                 <button type="submit">Save Embedding Defaults</button>
             </form>
         </div>
+    </div>
 
-        <section
-            class="embedding-tools"
-            {% if active_embedding_document or provider_project.embedding_sync_status in active_embedding_statuses %}
-                hx-get="{{ request.get_full_path }}"
-                hx-trigger="every 3s"
-                hx-select=".embedding-tools"
-                hx-swap="outerHTML"
+    <section class="embedding-tools" {% if active_embedding_document or provider_project.embedding_sync_status in
+        active_embedding_statuses %} hx-get="{{ request.get_full_path }}" hx-trigger="every 3s"
+        hx-select=".embedding-tools" hx-swap="outerHTML" {% endif %}>
+        <div class="section-heading">
+            <h2>Embedding Rebuild / Sync</h2>
+            <span>Use after changing embedding provider, model, or dimensions</span>
+        </div>
+
+        {% if projects %}
+        <nav class="project-tabs compact-tabs" aria-label="Embedding project filter">
+            {% for project in projects %}
+            <a href="{% url 'dashboard:providers' %}?project={{ project.slug }}" {% if project.slug==active_project_slug
+                %}class="active" {% endif %}>{{ project.name }}</a>
+            {% endfor %}
+        </nav>
+        {% endif %}
+
+        {% if provider_project %}
+        <div class="embedding-actions">
+            {% if provider_project.embedding_sync_status == "queued" or provider_project.embedding_sync_status ==
+            "processing" or provider_project.embedding_sync_status == "cancelling" %}
+            <form method="post" action="{% url 'dashboard:control_project_embeddings' provider_project.slug 'cancel' %}"
+                data-loading-form>
+                {% csrf_token %}
+                <button type="submit" data-loading-label="Stopping...">Stop</button>
+            </form>
+            {% elif provider_project.embedding_sync_status == "failed" or provider_project.embedding_sync_status ==
+            "cancelled" %}
+            <form method="post" action="{% url 'dashboard:control_project_embeddings' provider_project.slug 'resume' %}"
+                data-loading-form>
+                {% csrf_token %}
+                <button type="submit" data-loading-label="Resuming...">Resume</button>
+            </form>
+            <form method="post" action="{% url 'dashboard:control_project_embeddings' provider_project.slug 'retry' %}"
+                data-loading-form>
+                {% csrf_token %}
+                <button type="submit" class="secondary" data-loading-label="Retrying...">Retry</button>
+            </form>
+            {% else %}
+            <form method="post" action="{% url 'dashboard:sync_embeddings' provider_project.slug %}" data-loading-form>
+                {% csrf_token %}
+                <button type="submit" data-loading-label="Syncing...">Sync Project Embeddings</button>
+            </form>
             {% endif %}
-        >
-            <div class="section-heading">
-                <h2>Embedding Rebuild / Sync</h2>
-                <span>Use after changing embedding provider, model, or dimensions</span>
-            </div>
+            <span>{{ provider_project.name }}</span>
+        </div>
 
-            {% if projects %}
-                <nav class="project-tabs compact-tabs" aria-label="Embedding project filter">
-                    {% for project in projects %}
-                        <a href="{% url 'dashboard:providers' %}?project={{ project.slug }}" {% if project.slug == active_project_slug %}class="active"{% endif %}>{{ project.name }}</a>
-                    {% endfor %}
-                </nav>
-            {% endif %}
-
-            {% if provider_project %}
-                <div class="embedding-actions">
-                    {% if provider_project.embedding_sync_status == "queued" or provider_project.embedding_sync_status == "processing" or provider_project.embedding_sync_status == "cancelling" %}
-                        <form method="post" action="{% url 'dashboard:control_project_embeddings' provider_project.slug 'cancel' %}" data-loading-form>
-                            {% csrf_token %}
-                            <button type="submit" data-loading-label="Stopping...">Stop</button>
-                        </form>
-                    {% elif provider_project.embedding_sync_status == "failed" or provider_project.embedding_sync_status == "cancelled" %}
-                        <form method="post" action="{% url 'dashboard:control_project_embeddings' provider_project.slug 'resume' %}" data-loading-form>
-                            {% csrf_token %}
-                            <button type="submit" data-loading-label="Resuming...">Resume</button>
-                        </form>
-                        <form method="post" action="{% url 'dashboard:control_project_embeddings' provider_project.slug 'retry' %}" data-loading-form>
-                            {% csrf_token %}
-                            <button type="submit" class="secondary" data-loading-label="Retrying...">Retry</button>
-                        </form>
-                    {% else %}
-                        <form method="post" action="{% url 'dashboard:sync_embeddings' provider_project.slug %}" data-loading-form>
-                            {% csrf_token %}
-                            <button type="submit" data-loading-label="Syncing...">Sync Project Embeddings</button>
-                        </form>
-                    {% endif %}
-                    <span>{{ provider_project.name }}</span>
-                </div>
-
-                <!-- {% if active_embedding_document %}
+        <!-- {% if active_embedding_document %}
                     <div class="embedding-actions active-embedding-action">
                         <form method="post" action="{% url 'dashboard:control_document_embeddings' provider_project.slug active_embedding_document.id 'cancel' %}" data-loading-form>
                             {% csrf_token %}
@@ -228,56 +243,72 @@
                     </div>
                 {% endif %} -->
 
-                {% if provider_documents %}
-                    <div class="document-rebuild-list">
-                        {% for document in provider_documents %}
-                            <article>
-                                <div class="document-rebuild-main">
-                                    <strong>{{ document.filename }}</strong>
-                                    <div class="document-embedding-meta">
-                                        <span>Status: {{ document.status }}{% if document.text %} · text ready{% else %} · needs processing{% endif %}</span>
-                                        <span> · embeddings: {% if document.embedding_provider and document.embedding_model %}{{ document.embedding_provider }} / {{ document.embedding_model }}{% else %}provider unknown{% endif %}</span>
-                                        {% if document.embedding_dimensions %}
-                                            <span> · dimensions: {{ document.embedding_dimensions }}</span>
-                                        {% endif %}
-                                        {% if document.embeddings_updated_at %}
-                                            <span> · updated: {{ document.embeddings_updated_at|human_datetime }}</span>
-                                        {% endif %}
-                                        <span> · embedding status: {{ document.embedding_status }}</span>
-                                    </div>
-                                    <span class="embedding-state-badge {{ document.embedding_rebuild_state.tone }}">{{ document.embedding_rebuild_state.label }}</span>
-                                </div>
-                                <div class="document-rebuild-actions">
-                                    {% if document.embedding_status == "queued" or document.embedding_status == "processing" or document.embedding_status == "cancelling" %}
-                                        <form method="post" action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'cancel' %}" data-loading-form>
-                                            {% csrf_token %}
-                                            <button type="submit" class="secondary" data-loading-label="Stopping...">Stop</button>
-                                        </form>
-                                    {% elif document.embedding_status == "failed" or document.embedding_status == "cancelled" %}
-                                        <form method="post" action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'resume' %}" data-loading-form>
-                                            {% csrf_token %}
-                                            <button type="submit" class="secondary" data-loading-label="Resuming..." {% if not document.text %}disabled{% endif %}>Resume</button>
-                                        </form>
-                                        <form method="post" action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'retry' %}" data-loading-form>
-                                            {% csrf_token %}
-                                            <button type="submit" class="secondary" data-loading-label="Retrying..." {% if not document.text %}disabled{% endif %}>Retry</button>
-                                        </form>
-                                    {% else %}
-                                        <form method="post" action="{% url 'dashboard:rebuild_document_embeddings' provider_project.slug document.id %}" data-loading-form>
-                                            {% csrf_token %}
-                                            <button type="submit" class="secondary" data-loading-label="Rebuilding..." {% if not document.text %}disabled{% endif %}>Rebuild</button>
-                                        </form>
-                                    {% endif %}
-                                </div>
-                            </article>
-                        {% endfor %}
+        {% if provider_documents %}
+        <div class="document-rebuild-list">
+            {% for document in provider_documents %}
+            <article>
+                <div class="document-rebuild-main">
+                    <strong>{{ document.filename }}</strong>
+                    <div class="document-embedding-meta">
+                        <span>Status: {{ document.status }}{% if document.text %} · text ready{% else %} · needs
+                            processing{% endif %}</span>
+                        <span> · embeddings: {% if document.embedding_provider and document.embedding_model %}{{
+                            document.embedding_provider }} / {{ document.embedding_model }}{% else %}provider unknown{%
+                            endif %}</span>
+                        {% if document.embedding_dimensions %}
+                        <span> · dimensions: {{ document.embedding_dimensions }}</span>
+                        {% endif %}
+                        {% if document.embeddings_updated_at %}
+                        <span> · updated: {{ document.embeddings_updated_at|human_datetime }}</span>
+                        {% endif %}
+                        <span> · embedding status: {{ document.embedding_status }}</span>
                     </div>
-                {% else %}
-                    <p class="muted">No documents in this project yet.</p>
-                {% endif %}
-            {% endif %}
+                    <span class="embedding-state-badge {{ document.embedding_rebuild_state.tone }}">{{
+                        document.embedding_rebuild_state.label }}</span>
+                </div>
+                <div class="document-rebuild-actions">
+                    {% if document.embedding_status == "queued" or document.embedding_status == "processing" or
+                    document.embedding_status == "cancelling" %}
+                    <form method="post"
+                        action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'cancel' %}"
+                        data-loading-form>
+                        {% csrf_token %}
+                        <button type="submit" class="secondary" data-loading-label="Stopping...">Stop</button>
+                    </form>
+                    {% elif document.embedding_status == "failed" or document.embedding_status == "cancelled" %}
+                    <form method="post"
+                        action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'resume' %}"
+                        data-loading-form>
+                        {% csrf_token %}
+                        <button type="submit" class="secondary" data-loading-label="Resuming..." {% if not document.text
+                            %}disabled{% endif %}>Resume</button>
+                    </form>
+                    <form method="post"
+                        action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'retry' %}"
+                        data-loading-form>
+                        {% csrf_token %}
+                        <button type="submit" class="secondary" data-loading-label="Retrying..." {% if not document.text
+                            %}disabled{% endif %}>Retry</button>
+                    </form>
+                    {% else %}
+                    <form method="post"
+                        action="{% url 'dashboard:rebuild_document_embeddings' provider_project.slug document.id %}"
+                        data-loading-form>
+                        {% csrf_token %}
+                        <button type="submit" class="secondary" data-loading-label="Rebuilding..." {% if not
+                            document.text %}disabled{% endif %}>Rebuild</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted">No documents in this project yet.</p>
+        {% endif %}
+        {% endif %}
 
-        </section>
+    </section>
     {% endif %}
 </section>
 {% endblock %}

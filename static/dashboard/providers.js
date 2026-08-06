@@ -78,7 +78,8 @@
       baseUrlInput.value = defaults.baseUrl;
 
       if (dimensionsInput) {
-        dimensionsInput.value = "768";
+        dimensionsInput.value =
+          "768 — fixed (the backend only supports this dimension)";
       }
     };
 

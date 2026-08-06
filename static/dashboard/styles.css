@@ -202,6 +202,8 @@ select {
   width: 18px;
 }
 
+input:disabled,
+textarea:disabled,
 select:disabled {
   background: #f8fafc;
   color: #647386;
