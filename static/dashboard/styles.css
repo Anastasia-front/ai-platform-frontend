@@ -870,6 +870,20 @@ h2 {
   font-style: normal;
 }
 
+.message-regenerate-btn {
+  justify-self: end;
+  min-height: 0;
+  border-color: #fda4af;
+  background: #fff1f2;
+  color: #be123c;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.message-regenerate-btn:hover {
+  background: #ffe4e6;
+}
+
 .message-progress {
   display: grid;
   gap: 10px;

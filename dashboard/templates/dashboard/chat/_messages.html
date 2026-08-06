@@ -11,6 +11,15 @@
             <div class="message-bubble">
                 {% include "dashboard/chat/_message_bubble.html" %}
             </div>
+            {% if forloop.last and message.role == "user" %}
+                <button
+                    type="button"
+                    class="message-regenerate-btn"
+                    data-regenerate-message
+                    data-regenerate-content="{{ message.content }}"
+                    title="This message was not processed. Retry it."
+                >↻ Retry</button>
+            {% endif %}
         </article>
     {% endfor %}
 {% else %}
