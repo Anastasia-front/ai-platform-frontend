@@ -33,14 +33,15 @@ EOT
 nginx_origin_private_key_version = 1
 
 env_values = {
-  DEBUG                    = "False"
-  ALLOWED_HOSTS            = "127.0.0.1,localhost,ai-automation-platform.com,www.ai-automation-platform.com"
-  CSRF_TRUSTED_ORIGINS     = "https://ai-automation-platform.com,https://www.ai-automation-platform.com"
-  SESSION_COOKIE_SECURE    = "True"
-  CSRF_COOKIE_SECURE       = "True"
-  SQLITE_PATH              = "/app/db.sqlite3"
-  SECRET_KEY               = "replace-with-django-secret-key"
-  GOOGLE_CLIENT_SECRET     = "replace-with-google-client-secret"
+  DEBUG                          = "False"
+  ALLOWED_HOSTS                  = "127.0.0.1,localhost,www.ai-automation-platform.com,ai-automation-platform.com"
+  CSRF_TRUSTED_ORIGINS           = "https://ai-automation-platform.com,https://www.ai-automation-platform.com"
+  SESSION_COOKIE_SECURE          = "True"
+  CSRF_COOKIE_SECURE             = "True"
+  SQLITE_PATH                    = "/app/db.sqlite3"
+  SECRET_KEY                     = "replace-with-django-secret-key"
+  GOOGLE_CLIENT_SECRET           = "replace-with-google-client-secret"
   BACKEND_REQUEST_TIMEOUT  = "30"
   BACKEND_WORKFLOW_TIMEOUT = "180"
+  BACKEND_LIST_TIMEOUT     = "8"
 }

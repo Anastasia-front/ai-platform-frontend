@@ -14,8 +14,10 @@ API_DOCS_URL = os.getenv(
 ).rstrip('/')
 REQUEST_TIMEOUT = 30
 WORKFLOW_TIMEOUT = 180
+LIST_TIMEOUT = 8
 REQUEST_TIMEOUT = int(getattr(settings, 'BACKEND_REQUEST_TIMEOUT', REQUEST_TIMEOUT))
 WORKFLOW_TIMEOUT = int(getattr(settings, 'BACKEND_WORKFLOW_TIMEOUT', WORKFLOW_TIMEOUT))
+LIST_TIMEOUT = int(getattr(settings, 'BACKEND_LIST_TIMEOUT', LIST_TIMEOUT))
 
 
 class BackendAPIError(Exception):
@@ -123,7 +125,7 @@ def get_health():
 
 
 def list_projects(token):
-    return _request('GET', '/projects/', token=token)
+    return _request('GET', '/projects/', token=token, timeout=LIST_TIMEOUT)
 
 
 def create_project(token, name, description=''):
@@ -237,7 +239,9 @@ def stream_message(token, chat_id, content, agent_name=None):
 
 
 def list_project_documents(token, project_id):
-    return _request('GET', f'/projects/{project_id}/documents', token=token)
+    return _request(
+        'GET', f'/projects/{project_id}/documents', token=token, timeout=LIST_TIMEOUT
+    )
 
 
 def upload_document(token, project_id, uploaded_file):
@@ -414,7 +418,7 @@ def stream_workflow_run(token, run_id):
 
 
 def get_providers(token):
-    return _request('GET', '/providers', token=token)
+    return _request('GET', '/providers', token=token, timeout=LIST_TIMEOUT)
 
 
 def update_chat_provider_defaults(
