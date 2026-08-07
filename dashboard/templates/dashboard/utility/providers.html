@@ -24,6 +24,10 @@
     <div class="notice danger-panel">{{ provider_error }}</div>
     {% endif %}
 
+    {% if provider_project_error %}
+    <div class="notice danger-panel">{{ provider_project_error }}</div>
+    {% endif %}
+
     {% if provider_data %}
     <div id="provider-panel">
         <div class="provider-grid">

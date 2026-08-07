@@ -89,6 +89,10 @@ def _build_providers_context(request):
         project, project_error = resolve_project(token, project_slug)
         if project_error:
             context["provider_project_error"] = project_error
+        elif not project.get("id"):
+            context["provider_project_error"] = (
+                "This project is missing required data and can't be loaded here."
+            )
         else:
             active_project = with_slug(project, "name")
             try:
