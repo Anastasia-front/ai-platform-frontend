@@ -12,20 +12,14 @@
         </div>
         {% if provider_data %}
         <div class="provider-current" id="provider-current">
-            <span>Chat: <strong>{{ provider_data.current.chat.provider }}</strong> · {{
-                provider_data.current.chat.model|default:"No model" }}</span>
-            <span>Embeddings: <strong>{{ provider_data.current.embeddings.provider }}</strong> · {{
-                provider_data.current.embeddings.model|default:"No model" }}</span>
+            <span>Chat: <strong>{{ provider_data.current.chat.provider }}</strong> · {{ provider_data.current.chat.model|default:"No model" }}</span>
+            <span>Embeddings: <strong>{{ provider_data.current.embeddings.provider }}</strong> · {{ provider_data.current.embeddings.model|default:"No model" }}</span>
         </div>
         {% endif %}
     </header>
 
     {% if provider_error %}
     <div class="notice danger-panel">{{ provider_error }}</div>
-    {% endif %}
-
-    {% if provider_project_error %}
-    <div class="notice danger-panel">{{ provider_project_error }}</div>
     {% endif %}
 
     {% if provider_data %}
@@ -41,8 +35,7 @@
                     <article class="provider-card {% if provider.active %}active{% endif %}">
                         <div>
                             <h3>{{ provider.name }}</h3>
-                            <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active
-                                %}Active{% else %}Available{% endif %}</span>
+                            <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active%}Active{% else %}Available{% endif %}</span>
                         </div>
                         <p>{{ provider.default_model|default:"No default model saved" }}</p>
                         <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
@@ -73,8 +66,7 @@
                     <article class="provider-card {% if provider.active %}active{% endif %}">
                         <div>
                             <h3>{{ provider.name }}</h3>
-                            <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active
-                                %}Active{% else %}Available{% endif %}</span>
+                            <span class="status-pill {% if provider.active %}live{% endif %}">{% if provider.active%}Active{% else %}Available{% endif %}</span>
                         </div>
                         <p>{{ provider.default_model|default:"No default model saved" }}</p>
                         <small>{{ provider.base_url|default:"Base URL not configured" }}</small>
@@ -117,8 +109,7 @@
                     Provider
                     <select name="provider" required data-provider-select>
                         {% for provider in provider_data.chat %}
-                        <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name
-                            }}</option>
+                        <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name }}</option>
                         {% endfor %}
                     </select>
                 </label>
@@ -158,8 +149,7 @@
                     Provider
                     <select name="provider" required data-provider-select>
                         {% for provider in provider_data.embeddings %}
-                        <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name
-                            }}</option>
+                        <option value="{{ provider.name }}" {% if provider.active %}selected{% endif %}>{{ provider.name }}</option>
                         {% endfor %}
                     </select>
                 </label>
@@ -190,8 +180,7 @@
         </div>
     </div>
 
-    <section class="embedding-tools" {% if active_embedding_document or provider_project.embedding_sync_status in
-        active_embedding_statuses %} hx-get="{{ request.get_full_path }}" hx-trigger="every 3s"
+    <section class="embedding-tools" {% if active_embedding_document or provider_project.embedding_sync_status in active_embedding_statuses %} hx-get="{{ request.get_full_path }}" hx-trigger="every 3s"
         hx-select=".embedding-tools" hx-swap="outerHTML" {% endif %}>
         <div class="section-heading">
             <h2>Embedding Rebuild / Sync</h2>
@@ -201,23 +190,20 @@
         {% if projects %}
         <nav class="project-tabs compact-tabs" aria-label="Embedding project filter">
             {% for project in projects %}
-            <a href="{% url 'dashboard:providers' %}?project={{ project.slug }}" {% if project.slug==active_project_slug
-                %}class="active" {% endif %}>{{ project.name }}</a>
+            <a href="{% url 'dashboard:providers' %}?project={{ project.slug }}" {% if project.slug == active_project_slug %}class="active" {% endif %}>{{ project.name }}</a>
             {% endfor %}
         </nav>
         {% endif %}
 
         {% if provider_project %}
         <div class="embedding-actions">
-            {% if provider_project.embedding_sync_status == "queued" or provider_project.embedding_sync_status ==
-            "processing" or provider_project.embedding_sync_status == "cancelling" %}
+            {% if provider_project.embedding_sync_status == "queued" or provider_project.embedding_sync_status == "processing" or provider_project.embedding_sync_status == "cancelling" %}
             <form method="post" action="{% url 'dashboard:control_project_embeddings' provider_project.slug 'cancel' %}"
                 data-loading-form>
                 {% csrf_token %}
                 <button type="submit" data-loading-label="Stopping...">Stop</button>
             </form>
-            {% elif provider_project.embedding_sync_status == "failed" or provider_project.embedding_sync_status ==
-            "cancelled" %}
+            {% elif provider_project.embedding_sync_status == "failed" or provider_project.embedding_sync_status == "cancelled" %}
             <form method="post" action="{% url 'dashboard:control_project_embeddings' provider_project.slug 'resume' %}"
                 data-loading-form>
                 {% csrf_token %}
@@ -256,9 +242,7 @@
                     <div class="document-embedding-meta">
                         <span>Status: {{ document.status }}{% if document.text %} · text ready{% else %} · needs
                             processing{% endif %}</span>
-                        <span> · embeddings: {% if document.embedding_provider and document.embedding_model %}{{
-                            document.embedding_provider }} / {{ document.embedding_model }}{% else %}provider unknown{%
-                            endif %}</span>
+                        <span> · embeddings: {% if document.embedding_provider and document.embedding_model %}{{ document.embedding_provider }} / {{ document.embedding_model }}{% else %}provider unknown{% endif %}</span>
                         {% if document.embedding_dimensions %}
                         <span> · dimensions: {{ document.embedding_dimensions }}</span>
                         {% endif %}
@@ -267,12 +251,10 @@
                         {% endif %}
                         <span> · embedding status: {{ document.embedding_status }}</span>
                     </div>
-                    <span class="embedding-state-badge {{ document.embedding_rebuild_state.tone }}">{{
-                        document.embedding_rebuild_state.label }}</span>
+                    <span class="embedding-state-badge {{ document.embedding_rebuild_state.tone }}">{{ document.embedding_rebuild_state.label }}</span>
                 </div>
                 <div class="document-rebuild-actions">
-                    {% if document.embedding_status == "queued" or document.embedding_status == "processing" or
-                    document.embedding_status == "cancelling" %}
+                    {% if document.embedding_status == "queued" or document.embedding_status == "processing" or document.embedding_status == "cancelling" %}
                     <form method="post"
                         action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'cancel' %}"
                         data-loading-form>
@@ -284,23 +266,20 @@
                         action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'resume' %}"
                         data-loading-form>
                         {% csrf_token %}
-                        <button type="submit" class="secondary" data-loading-label="Resuming..." {% if not document.text
-                            %}disabled{% endif %}>Resume</button>
+                        <button type="submit" class="secondary" data-loading-label="Resuming..." {% if not document.text %}disabled{% endif %}>Resume</button>
                     </form>
                     <form method="post"
                         action="{% url 'dashboard:control_document_embeddings' provider_project.slug document.id 'retry' %}"
                         data-loading-form>
                         {% csrf_token %}
-                        <button type="submit" class="secondary" data-loading-label="Retrying..." {% if not document.text
-                            %}disabled{% endif %}>Retry</button>
+                        <button type="submit" class="secondary" data-loading-label="Retrying..." {% if not document.text %}disabled{% endif %}>Retry</button>
                     </form>
                     {% else %}
                     <form method="post"
                         action="{% url 'dashboard:rebuild_document_embeddings' provider_project.slug document.id %}"
                         data-loading-form>
                         {% csrf_token %}
-                        <button type="submit" class="secondary" data-loading-label="Rebuilding..." {% if not
-                            document.text %}disabled{% endif %}>Rebuild</button>
+                        <button type="submit" class="secondary" data-loading-label="Rebuilding..." {% if not document.text %}disabled{% endif %}>Rebuild</button>
                     </form>
                     {% endif %}
                 </div>
