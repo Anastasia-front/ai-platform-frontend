@@ -180,6 +180,7 @@
         </div>
     </div>
 
+    {% if provider_documents %}
     <section class="embedding-tools" {% if active_embedding_document or provider_project.embedding_sync_status in active_embedding_statuses %} hx-get="{{ request.get_full_path }}" hx-trigger="every 3s"
         hx-select=".embedding-tools" hx-swap="outerHTML" {% endif %}>
         <div class="section-heading">
@@ -233,7 +234,6 @@
                     </div>
                 {% endif %} -->
 
-        {% if provider_documents %}
         <div class="document-rebuild-list">
             {% for document in provider_documents %}
             <article>
@@ -286,12 +286,10 @@
             </article>
             {% endfor %}
         </div>
-        {% else %}
-        <p class="muted">No documents in this project yet.</p>
-        {% endif %}
         {% endif %}
 
     </section>
+    {% endif %}
     {% endif %}
 </section>
 {% endblock %}
