@@ -40,7 +40,10 @@
         return;
       }
 
-      if (form.dataset.confirmMessage && !window.confirm(form.dataset.confirmMessage)) {
+      if (
+        form.dataset.confirmMessage &&
+        !window.confirm(form.dataset.confirmMessage)
+      ) {
         event.preventDefault();
         return;
       }
@@ -56,10 +59,21 @@
     });
   };
 
+  const restoreAllLoadingButtons = () => {
+    document
+      .querySelectorAll('[data-loading-active="true"]')
+      .forEach((button) => restore(button));
+  };
+
   window.DashboardLoadingButtons = {
     setLoading,
     restore,
   };
 
   document.addEventListener("DOMContentLoaded", initializeLoadingForms);
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      restoreAllLoadingButtons();
+    }
+  });
 })();
