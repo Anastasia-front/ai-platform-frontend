@@ -73,6 +73,11 @@ urlpatterns = [
         views.document_status_partial,
         name='document_status_partial',
     ),
+    path(
+        'projects/<slug:project_slug>/documents/<int:document_id>/actions/',
+        views.document_actions_partial,
+        name='document_actions_partial',
+    ),
     path('providers/', views.providers, name='providers'),
     path('providers/chat/defaults/', views.update_chat_provider, name='update_chat_provider'),
     path(
@@ -182,6 +187,11 @@ urlpatterns = [
         'executions/<int:run_id>/content/',
         views.execution_content_partial,
         name='execution_content_partial',
+    ),
+    path(
+        'executions/<int:run_id>/actions/',
+        views.execution_actions_partial,
+        name='execution_actions_partial',
     ),
     path(
         'executions/<int:run_id>/stream/',
