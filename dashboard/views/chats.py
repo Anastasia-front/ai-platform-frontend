@@ -7,18 +7,20 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 
 from ..services import backend_api
+from .documents import ACTIVE_DOCUMENT_STATUSES
 from .utils import (
     AGENT_MODES,
     app_context,
     auth_required,
     handle_api_error,
-    resource_slug,
     resolve_chat,
     resolve_project,
+    resource_slug,
     session_token,
     with_slug,
     with_slugs,
 )
+
 
 @auth_required
 @require_POST
@@ -61,6 +63,7 @@ def chat_detail(request, project_slug, chat_slug):
         active_project_slug=project_slug,
         active_chat_slug=chat_slug,
     )
+    context["active_document_statuses"] = ACTIVE_DOCUMENT_STATUSES
 
     if project_error:
         context["page_error"] = project_error
