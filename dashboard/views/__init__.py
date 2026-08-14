@@ -19,6 +19,7 @@ from .chats import (
 from .documents import (
     cancel_document_processing,
     delete_document,
+    document_actions_partial,
     document_status_partial,
     process_document,
     retry_document_processing,
@@ -28,6 +29,7 @@ from .executions import (
     cancel_execution,
     delete_canceled_executions,
     delete_execution,
+    execution_actions_partial,
     execution_content_partial,
     execution_detail,
     execution_status_partial,
