@@ -60,6 +60,22 @@ def executions(request):
             run["input_source"] = execution_input_source(run.get("input") or "")
             run["template_name"] = execution_template_name(run)
 
+        token = session_token(request)
+        grand_total = _run_count(token)
+        status_counts = {
+            status_value: _run_count(token, status=status_value)
+            for status_value in EXECUTION_STATUS_FILTERS
+        }
+        project_counts = {
+            project.get("id"): _run_count(token, project_id=project.get("id"))
+            for project in context.get("projects", [])
+        }
+        distinct_statuses_present = sum(1 for c in status_counts.values() if c)
+        distinct_projects_present = sum(1 for c in project_counts.values() if c)
+        show_execution_filters = grand_total > 0 and (
+            distinct_statuses_present > 1 or distinct_projects_present > 1
+        )
+
         context.update(
             {
                 "workflow_runs": runs_page["items"],
@@ -76,10 +92,12 @@ def executions(request):
                     runs_page["total_pages"],
                 ),
                 "execution_project_tabs": context.get("projects", []),
+                "show_execution_filters": show_execution_filters,
                 "execution_project_filter_tabs": _project_filter_tabs(
                     request,
                     context.get("projects", []),
                     active_project,
+                    project_counts,
                 ),
                 "active_execution_project": active_project,
                 "active_execution_project_id": (
@@ -91,6 +109,7 @@ def executions(request):
                 "execution_status_filter_tabs": _status_filter_tabs(
                     request,
                     active_status,
+                    status_counts,
                 ),
                 "active_execution_status": active_status,
                 "active_run_statuses": ACTIVE_RUN_STATUSES,
@@ -102,6 +121,7 @@ def executions(request):
         context["workflow_runs"] = []
         context["execution_total"] = 0
         context["execution_project_tabs"] = []
+        context["show_execution_filters"] = False
 
     return render(request, "dashboard/utility/executions.html", context)
 
@@ -205,7 +225,14 @@ def _query_url(request, **updates):
     return f"{request.path}?{query.urlencode()}"
 
 
-def _project_filter_tabs(request, projects, active_project):
+def _run_count(token, status=None, project_id=None):
+    payload = backend_api.list_workflow_runs(
+        token, page=1, page_size=1, status=status, project_id=project_id
+    )
+    return _normalize_runs_page(payload, 1, 1)["total"]
+
+
+def _project_filter_tabs(request, projects, active_project, project_counts):
     tabs = [
         {
             "label": "All",
@@ -214,6 +241,8 @@ def _project_filter_tabs(request, projects, active_project):
         }
     ]
     for project in projects:
+        if not project_counts.get(project.get("id")):
+            continue
         slug = project.get("slug", "")
         tabs.append(
             {
@@ -225,7 +254,7 @@ def _project_filter_tabs(request, projects, active_project):
     return tabs
 
 
-def _status_filter_tabs(request, active_status):
+def _status_filter_tabs(request, active_status, status_counts):
     tabs = [
         {
             "label": "All",
@@ -234,6 +263,8 @@ def _status_filter_tabs(request, active_status):
         }
     ]
     for status_value, label in EXECUTION_STATUS_FILTERS.items():
+        if not status_counts.get(status_value):
+            continue
         tabs.append(
             {
                 "label": label,
@@ -403,6 +434,30 @@ def execution_status_partial(request, run_id):
         request,
         "dashboard/partials/execution_status.html",
         {"workflow_run": workflow_run, "active_run_statuses": ACTIVE_RUN_STATUSES},
+    )
+
+
+@auth_required
+def execution_actions_partial(request, run_id):
+    """HTMX polling target: returns the action buttons (Stop/Retry/Resume)
+    for a run, so they stay in sync with the status badge -- which polls
+    independently -- instead of freezing at whatever state was rendered on
+    initial page load."""
+    try:
+        workflow_run = backend_api.get_workflow_run(session_token(request), run_id)
+        workflow_run = redact_secrets(workflow_run)
+    except backend_api.BackendAPIError:
+        workflow_run = None
+
+    return render(
+        request,
+        "dashboard/partials/execution_actions_live.html",
+        {
+            "workflow_run": workflow_run,
+            "active_run_statuses": ACTIVE_RUN_STATUSES,
+            "next_url": request.GET.get("next", ""),
+            "last_item_on_page": request.GET.get("last_item_on_page", ""),
+        },
     )
 
 
