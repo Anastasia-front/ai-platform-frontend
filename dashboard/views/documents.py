@@ -184,3 +184,26 @@ def document_status_partial(request, document_id):
         "dashboard/partials/document_status.html",
         {"document": document, "active_statuses": ACTIVE_DOCUMENT_STATUSES},
     )
+
+
+@auth_required
+def document_actions_partial(request, project_slug, document_id):
+    """HTMX polling target: returns the action buttons (Stop/Process/Retry)
+    for a single document, so they stay in sync with the status badge
+    instead of freezing at whatever state was rendered on page load."""
+    token = session_token(request)
+
+    try:
+        document = backend_api.get_document(token, document_id)
+    except backend_api.BackendAPIError:
+        document = None
+
+    return render(
+        request,
+        "dashboard/partials/document_actions_live.html",
+        {
+            "document": document,
+            "project_slug": project_slug,
+            "active_statuses": ACTIVE_DOCUMENT_STATUSES,
+        },
+    )
