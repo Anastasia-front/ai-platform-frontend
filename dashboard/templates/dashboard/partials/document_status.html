@@ -11,9 +11,9 @@
     hx-swap="outerHTML"
     {% endif %}
 >{{ document.status }}{% if document.text %} · text ready{% elif document.status in active_statuses %} · processing…{% else %} · needs processing{% endif %}</span>
-<!-- {% if document.processing_error %}
+{% if document.status == "failed" and document.processing_error %}
 <span class="muted document-status-error">{{ document.processing_error }}</span>
-{% endif %} -->
+{% endif %}
 {% else %}
 <span class="status-badge status-unknown">unavailable</span>
 {% endif %}
