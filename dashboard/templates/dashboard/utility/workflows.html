@@ -82,7 +82,7 @@
                                 <div data-document-row data-document-id="{{ document.id }}">
                                     <span>{{ document.filename }} needs text extraction before review.</span>
                                     {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
-                                    {% include "dashboard/partials/document_actions.html" with project_slug=workflow_project.slug %}
+                                    {% include "dashboard/partials/document_actions_live.html" with project_slug=workflow_project.slug active_statuses=active_document_statuses %}
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -157,7 +157,7 @@
                                 <div data-document-row data-document-id="{{ document.id }}">
                                     <span>{{ document.filename }} needs text extraction before it can be used as a CV.</span>
                                     {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
-                                    {% include "dashboard/partials/document_actions.html" with project_slug=workflow_project.slug %}
+                                    {% include "dashboard/partials/document_actions_live.html" with project_slug=workflow_project.slug active_statuses=active_document_statuses %}
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -262,7 +262,7 @@
                                 <div data-document-row data-document-id="{{ document.id }}">
                                     <span>{{ document.filename }} needs text extraction before it can be used.</span>
                                     {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
-                                    {% include "dashboard/partials/document_actions.html" with project_slug=workflow_project.slug %}
+                                    {% include "dashboard/partials/document_actions_live.html" with project_slug=workflow_project.slug active_statuses=active_document_statuses %}
                                 </div>
                             {% endif %}
                         {% endfor %}

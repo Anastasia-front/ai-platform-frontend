@@ -112,7 +112,7 @@
                                             {% include "dashboard/partials/document_status.html" with active_statuses=active_document_statuses %}
                                         </div>
                                         <div class="document-actions">
-                                            {% include "dashboard/partials/document_actions.html" with project_slug=active_project.slug %}
+                                            {% include "dashboard/partials/document_actions_live.html" with project_slug=active_project.slug active_statuses=active_document_statuses %}
                                             <form method="post" action="{% url 'dashboard:delete_document' active_project.slug document.id %}">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
