@@ -21,7 +21,7 @@
             {% endif %}
         </div>
         <div class="header-actions">
-            {% include "dashboard/partials/execution_actions.html" %}
+            {% include "dashboard/partials/execution_actions_live.html" with next_url=request.get_full_path %}
                 <a class="button blue-danger-button" href="{% url 'dashboard:executions' %}">
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
                         <path d="m15 6-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"

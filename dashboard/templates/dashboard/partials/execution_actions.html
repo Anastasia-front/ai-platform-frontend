@@ -2,7 +2,7 @@
     {% if workflow_run.status in active_run_statuses %}
         <form method="post" action="{% url 'dashboard:cancel_execution' workflow_run.id %}" data-loading-form>
             {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="next" value="{{ next_url|default:request.get_full_path }}">
             {% if workflow_run.status != 'completed' %}
                 <button type="submit" class="danger-button" data-loading-label="Stopping...">Stop</button>
             {% endif %}
@@ -11,19 +11,19 @@
         {% if workflow_run.status == "failed" or workflow_run.status == "paused" or workflow_run.status == "canceled" or workflow_run.status == "cancelled" %}
             <form method="post" action="{% url 'dashboard:resume_execution' workflow_run.id %}" data-loading-form>
                 {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <input type="hidden" name="next" value="{{ next_url|default:request.get_full_path }}">
                 <button type="submit" class="secondary" data-loading-label="Resuming...">Resume</button>
             </form>
         {% endif %}
         <form method="post" action="{% url 'dashboard:retry_execution' workflow_run.id %}" data-loading-form>
             {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="next" value="{{ next_url|default:request.get_full_path }}">
             <button type="submit" class="secondary" data-loading-label="Retrying...">Retry</button>
         </form>
     {% elif workflow_run.status == "completed" %}
         <form method="post" action="{% url 'dashboard:retry_execution' workflow_run.id %}" data-loading-form>
             {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="next" value="{{ next_url|default:request.get_full_path }}">
             <button type="submit" class="secondary" data-loading-label="Retrying...">Retry</button>
         </form>
     {% endif %}
