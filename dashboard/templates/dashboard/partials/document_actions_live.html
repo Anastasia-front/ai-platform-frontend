@@ -1,0 +1,13 @@
+{% if document %}
+<div
+    id="document-actions-{{ document.id }}"
+    class="document-actions-live"
+    data-document-actions
+    data-document-id="{{ document.id }}"
+    {% if document.status in active_statuses %}
+    hx-get="{% url 'dashboard:document_actions_partial' project_slug=project_slug document_id=document.id %}"
+    hx-trigger="every 3s"
+    hx-swap="outerHTML"
+    {% endif %}
+>{% include "dashboard/partials/document_actions.html" %}</div>
+{% endif %}

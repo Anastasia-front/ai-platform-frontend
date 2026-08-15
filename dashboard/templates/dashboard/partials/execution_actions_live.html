@@ -1,0 +1,12 @@
+{% if workflow_run %}
+<div
+    id="execution-actions-{{ workflow_run.id }}"
+    class="execution-actions-live"
+    data-execution-actions
+    {% if workflow_run.status in active_run_statuses %}
+    hx-get="{% url 'dashboard:execution_actions_partial' run_id=workflow_run.id %}?next={{ next_url|default:request.get_full_path|urlencode }}{% if last_item_on_page %}&last_item_on_page=1{% endif %}"
+    hx-trigger="every 3s"
+    hx-swap="outerHTML"
+    {% endif %}
+>{% include "dashboard/partials/execution_actions.html" %}</div>
+{% endif %}
