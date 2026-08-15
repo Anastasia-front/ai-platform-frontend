@@ -2093,7 +2093,8 @@ h2 {
   color: #c2410c;
 }
 
-.execution-buttons-container {
+.execution-buttons-container,
+.execution-actions-live {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
