@@ -88,6 +88,13 @@
                 Existing document embeddings belong to the embedding provider/model used when they were created. If you change embedding defaults, rebuild or sync old document embeddings. Newly uploaded documents use the new embedding provider automatically.
             </div>
             <p>The Providers page shows active defaults, available providers, saved-key state, health checks, and rebuild/sync tools when supported by the backend.</p>
+            <h3>Per-user provider settings</h3>
+            <p>Your provider settings are private to you. If you haven't configured a provider, you inherit the platform default (currently Gemini) for provider/model selection, but never anyone else's API key &mdash; keys are strictly private to the account that entered them. Saving your own API key in Settings &rarr; Providers creates a personal override that only affects your account.</p>
+            <h3>Automatic failover</h3>
+            <p>Chat and embedding requests don't hard-fail if your selected provider is unavailable or unkeyed. They fail over through an ordered chain (e.g. Gemini &rarr; Groq &rarr; OpenRouter &rarr; Ollama) until one succeeds, so you always have a working provider even with zero configuration. A circuit breaker temporarily skips a provider after repeated failures instead of retrying it on every request. The <strong>Check</strong> button on each provider card tests that specific provider directly, independent of the failover chain.</p>
+            <div class="guide-callout">
+                Small local models served through Ollama (e.g. gemma2:2b) don't reliably follow strict-JSON instructions, even when explicitly told to. If a workflow step or feature needs dependable structured output, add your own API key for a hosted provider (Gemini, Groq, or OpenRouter) instead of relying on the free Ollama fallback.
+            </div>
         </article>
 
         <article class="guide-card wide" id="workflows">

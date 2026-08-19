@@ -11,7 +11,7 @@
             <h1>Providers</h1>
         </div>
         {% if provider_data %}
-        <div class="provider-current" id="provider-current">
+        <div class="provider-current" id="provider-current" hx-swap-oob="true">
             <span>Chat: <strong>{{ provider_data.current.chat.provider }}</strong> · {{ provider_data.current.chat.model|default:"No model" }}</span>
             <span>Embeddings: <strong>{{ provider_data.current.embeddings.provider }}</strong> · {{ provider_data.current.embeddings.model|default:"No model" }}</span>
         </div>

@@ -1,36 +1,35 @@
 (() => {
   const providerScrollStorageKey = "dashboard:providers:scrollTop";
 
-  const providerDefaults = {
-    ollama: {
-      baseUrl: "http://ollama.ai-platform.internal:11434",
-      chatModels: ["gemma2:2b", "llama3.2:3b", "mistral:7b", "qwen2.5:7b"],
-      embeddingModels: ["nomic-embed-text"],
-    },
-    gemini: {
-      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-      chatModels: ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"],
-      embeddingModels: ["text-embedding-004"],
-    },
-    openrouter: {
-      baseUrl: "https://openrouter.ai/api/v1",
-      chatModels: [
-        "openai/gpt-4o-mini",
-        "google/gemini-flash-1.5",
-        "anthropic/claude-3.5-haiku",
-        "meta-llama/llama-3.1-8b-instruct",
-      ],
-      embeddingModels: ["openai/text-embedding-3-small"],
-    },
-    groq: {
-      baseUrl: "https://api.groq.com/openai/v1",
-      chatModels: [
-        "llama-3.1-8b-instant",
-        "llama-3.3-70b-versatile",
-        "mixtral-8x7b-32768",
-      ],
-      embeddingModels: [],
-    },
+  const emptyProviderCardValue = (text, placeholder) =>
+    text && text !== placeholder ? text : "";
+
+  const readProviderCardData = (kind) => {
+    const sections = document.querySelectorAll(".provider-section");
+    const section = kind === "embedding" ? sections[1] : sections[0];
+    const data = {};
+    if (!section) {
+      return data;
+    }
+
+    section.querySelectorAll(".provider-card").forEach((card) => {
+      const name = card.querySelector("h3")?.textContent?.trim();
+      if (!name) {
+        return;
+      }
+      data[name] = {
+        baseUrl: emptyProviderCardValue(
+          card.querySelector("small")?.textContent?.trim(),
+          "Base URL not configured",
+        ),
+        model: emptyProviderCardValue(
+          card.querySelector("p")?.textContent?.trim(),
+          "No default model saved",
+        ),
+      };
+    });
+
+    return data;
   };
 
   const replaceSuggestions = (input, models) => {
@@ -59,23 +58,29 @@
       return;
     }
 
+    const cardData = readProviderCardData(kind);
+    const chatCardData =
+      kind === "embedding" ? readProviderCardData("chat") : cardData;
+
     const applyProviderDefaults = (preserveCurrent = false) => {
       const provider = providerSelect.value;
-      const defaults = providerDefaults[provider] || providerDefaults.ollama;
-      const models =
-        kind === "embedding" ? defaults.embeddingModels : defaults.chatModels;
+      const defaults = cardData[provider] || { baseUrl: "", model: "" };
+      const fallbackDefaults = chatCardData[provider] || { model: "" };
 
-      replaceSuggestions(modelInput, models);
-      replaceSuggestions(fallbackInput, defaults.chatModels);
+      replaceSuggestions(modelInput, defaults.model ? [defaults.model] : []);
+      replaceSuggestions(
+        fallbackInput,
+        fallbackDefaults.model ? [fallbackDefaults.model] : [],
+      );
 
       if (!preserveCurrent) {
-        modelInput.value = "";
+        modelInput.value = defaults.model || "";
         if (fallbackInput) {
           fallbackInput.value = "";
         }
       }
 
-      baseUrlInput.value = defaults.baseUrl;
+      baseUrlInput.value = defaults.baseUrl || "";
 
       if (dimensionsInput) {
         dimensionsInput.value =
@@ -228,6 +233,15 @@
       }
     });
   };
+
+  document.body.addEventListener("htmx:afterSwap", (event) => {
+    if (!event.target?.querySelectorAll) {
+      return;
+    }
+    event.target
+      .querySelectorAll("[data-provider-form]")
+      .forEach(initializeProviderForm);
+  });
 
   document.addEventListener("DOMContentLoaded", () => {
     document
