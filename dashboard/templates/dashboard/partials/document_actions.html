@@ -1,20 +1,20 @@
 {% if document %}
-    {% if document.status in active_document_statuses %}
+    {% if document.status in active_statuses %}
         <form method="post" action="{% url 'dashboard:cancel_document_processing' project_slug document.id %}" data-loading-form>
             {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="next" value="{{ next|default:request.get_full_path }}">
             <button type="submit" class="danger-button" data-loading-label="Stopping...">Stop</button>
         </form>
     {% elif document.status == "failed" or document.status == "cancelled" %}
         <form method="post" action="{% url 'dashboard:retry_document_processing' project_slug document.id %}" data-loading-form data-document-process-form data-document-id="{{ document.id }}">
             {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="next" value="{{ next|default:request.get_full_path }}">
             <button type="submit" class="process-button" data-loading-label="Retrying...">Retry</button>
         </form>
     {% elif not document.text %}
         <form method="post" action="{% url 'dashboard:process_document' project_slug document.id %}" data-loading-form data-document-process-form data-document-id="{{ document.id }}">
             {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="next" value="{{ next|default:request.get_full_path }}">
             <button type="submit" class="process-button" data-loading-label="Queuing...">Process</button>
         </form>
     {% endif %}

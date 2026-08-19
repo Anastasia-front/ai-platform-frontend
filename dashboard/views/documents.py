@@ -205,5 +205,6 @@ def document_actions_partial(request, project_slug, document_id):
             "document": document,
             "project_slug": project_slug,
             "active_statuses": ACTIVE_DOCUMENT_STATUSES,
+            "next": request.GET.get("next") or "",
         },
     )

@@ -5,9 +5,9 @@
     data-document-actions
     data-document-id="{{ document.id }}"
     {% if document.status in active_statuses %}
-    hx-get="{% url 'dashboard:document_actions_partial' project_slug=project_slug document_id=document.id %}"
+    hx-get="{% url 'dashboard:document_actions_partial' project_slug=project_slug document_id=document.id %}?next={{ next|default:request.get_full_path|urlencode }}"
     hx-trigger="every 3s"
     hx-swap="outerHTML"
     {% endif %}
->{% include "dashboard/partials/document_actions.html" %}</div>
+>{% include "dashboard/partials/document_actions.html" with next=next|default:request.get_full_path %}</div>
 {% endif %}
