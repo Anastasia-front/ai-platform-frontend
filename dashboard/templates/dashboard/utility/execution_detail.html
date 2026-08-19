@@ -43,30 +43,31 @@
     </details>
     <script>
         (function () {
-            var logEl = document.getElementById("live-stream-log-{{ workflow_run.id }}");
-            var headerStatusEl = document.getElementById("run-header-status-{{ workflow_run.id }}");
-            var detailsEl = document.getElementById("live-stream-{{ workflow_run.id }}");
+            const logEl = document.getElementById("live-stream-log-{{ workflow_run.id }}");
+            const headerStatusEl = document.getElementById("execution-status-{{ workflow_run.id }}");
+            const detailsEl = document.getElementById("live-stream-{{ workflow_run.id }}");
+            const wasActiveOnLoad = detailsEl ? detailsEl.dataset.wasActive === "true" : false;
             if (!logEl || typeof EventSource === "undefined") {
                 return;
             }
 
-            var source = new EventSource("{% url 'dashboard:execution_stream' run_id=workflow_run.id %}");
-            var terminalEvents = ["completed", "failed", "cancelled"];
-            var terminalStatusByEvent = {
+            const source = new EventSource("{% url 'dashboard:execution_stream' run_id=workflow_run.id %}");
+            const terminalEvents = ["completed", "failed", "cancelled"];
+            const terminalStatusByEvent = {
                 completed: "completed",
                 failed: "failed",
                 cancelled: "canceled",
             };
-            var eventNames = [
+            const eventNames = [
                 "queued", "started", "step_started", "step_completed", "step_failed",
                 "step_skipped", "tool_invoked", "retrieval_started", "retrieval_completed",
                 "partial_output", "completed", "failed", "cancelled",
             ];
-            var seenEventIds = {};
-            var closedByUs = false;
-            var reconnectAttempts = 0;
-            var maxReconnectAttempts = 5;
-            var stepStreams = {};
+            const seenEventIds = {};
+            let closedByUs = false;
+            let reconnectAttempts = 0;
+            const maxReconnectAttempts = 5;
+            const stepStreams = {};
 
             function clearPlaceholder() {
                 if (logEl.querySelector("p.muted")) {
@@ -82,7 +83,7 @@
                 if (!iso) {
                     return "";
                 }
-                var date = new Date(iso);
+                const date = new Date(iso);
                 if (isNaN(date.getTime())) {
                     return iso;
                 }
@@ -94,12 +95,12 @@
 
             function renderEntry(data) {
                 clearPlaceholder();
-                var article = document.createElement("article");
-                var strong = document.createElement("strong");
+                const article = document.createElement("article");
+                const strong = document.createElement("strong");
                 strong.textContent = data.event || "event";
-                var span = document.createElement("span");
+                const span = document.createElement("span");
                 span.textContent = formatTimestamp(data.timestamp);
-                var pre = document.createElement("pre");
+                const pre = document.createElement("pre");
                 pre.textContent = data.message || "";
                 article.appendChild(strong);
                 article.appendChild(span);
@@ -111,12 +112,12 @@
 
             function renderStepStart(data) {
                 clearPlaceholder();
-                var article = document.createElement("article");
-                var strong = document.createElement("strong");
+                const article = document.createElement("article");
+                const strong = document.createElement("strong");
                 strong.textContent = data.message || "Step started";
-                var span = document.createElement("span");
+                const span = document.createElement("span");
                 span.textContent = formatTimestamp(data.timestamp);
-                var pre = document.createElement("pre");
+                const pre = document.createElement("pre");
                 pre.className = "streaming-output";
                 article.appendChild(strong);
                 article.appendChild(span);
@@ -129,11 +130,11 @@
             }
 
             function renderPartialOutput(data) {
-                var pre = data.step_id != null ? stepStreams[data.step_id] : null;
+                let pre = data.step_id != null ? stepStreams[data.step_id] : null;
                 if (!pre) {
                     // No matching step_started seen (e.g. joined mid-step) --
                     // fall back to a standalone growing entry for this step.
-                    var rendered = renderEntry({ event: "output", timestamp: data.timestamp, message: "" });
+                    const rendered = renderEntry({ event: "output", timestamp: data.timestamp, message: "" });
                     pre = rendered.pre;
                     if (data.step_id != null) {
                         stepStreams[data.step_id] = pre;
@@ -144,7 +145,7 @@
             }
 
             function handleFrame(evt) {
-                var data;
+                let data;
                 try {
                     data = JSON.parse(evt.data);
                 } catch (e) {
@@ -173,7 +174,9 @@
                     }
                     closedByUs = true;
                     source.close();
-                    window.location.reload();
+                    if (wasActiveOnLoad) {
+                        window.location.reload();
+                    }
                 }
             }
 
@@ -190,7 +193,7 @@
                     closedByUs = true;
                     source.close();
                     clearPlaceholder();
-                    var notice = document.createElement("p");
+                    const notice = document.createElement("p");
                     notice.className = "muted";
                     notice.textContent = "Live stream unavailable — status will keep refreshing below.";
                     logEl.appendChild(notice);
