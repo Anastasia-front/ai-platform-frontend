@@ -1286,6 +1286,23 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.document-meta-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.document-meta-line span {
+  display: inline;
+  margin-top: 0;
+}
+
+.document-id {
+  flex-shrink: 0;
+}
+
 .document-actions {
   display: flex;
   align-items: center;

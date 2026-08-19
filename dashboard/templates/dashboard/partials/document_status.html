@@ -1,7 +1,7 @@
 {% if document %}
-<span
+<div
     id="document-status-{{ document.id }}"
-    class="status-badge status-{{ document.status }}"
+    class="document-meta-line"
     data-document-status
     data-document-id="{{ document.id }}"
     data-document-has-text="{% if document.text %}true{% else %}false{% endif %}"
@@ -10,7 +10,10 @@
     hx-trigger="every 3s"
     hx-swap="outerHTML"
     {% endif %}
->{{ document.status }}{% if document.text %} · text ready{% elif document.status in active_statuses %} · processing…{% else %} · needs processing{% endif %}</span>
+>
+    <span class="status-badge status-{{ document.status }}">{{ document.status }}{% if document.text %} · text ready{% elif document.status in active_statuses %} · processing…{% else %} · needs processing{% endif %}</span>
+    <span class="muted document-id">id: {{ document.id }}</span>
+</div>
 {% if document.status == "failed" and document.processing_error %}
 <span class="muted document-status-error">{{ document.processing_error }}</span>
 {% endif %}
